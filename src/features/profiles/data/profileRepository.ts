@@ -35,10 +35,26 @@ function generateProfileId(): string {
 // entries. `dbLocation`/`imageBaseDir` mirror provisionProfileStorage's own
 // override params — left undefined in production, overridden in tests.
 export class LocalProfileRepository implements ProfileRepository {
+  // create/update/remove each do a read-check-(await)-write against the
+  // same registry; two calls overlapping (e.g. a double-tap racing a retry)
+  // could otherwise interleave and lose one's write. Chaining every
+  // mutation through this queue serializes them per repository instance —
+  // App.tsx's single shared instance means this covers the whole app.
+  private mutationQueue: Promise<unknown> = Promise.resolve();
+
   constructor(
     private readonly dbLocation?: string,
     private readonly imageBaseDir?: string,
   ) {}
+
+  private enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.mutationQueue.then(operation, operation);
+    this.mutationQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
 
   async list(): Promise<Profile[]> {
     return getProfileRegistry()
@@ -47,7 +63,14 @@ export class LocalProfileRepository implements ProfileRepository {
       .map(toProfile);
   }
 
-  async create(name: string, avatarColor: string): Promise<Profile> {
+  create(name: string, avatarColor: string): Promise<Profile> {
+    return this.enqueueMutation(() => this.createInternal(name, avatarColor));
+  }
+
+  private async createInternal(
+    name: string,
+    avatarColor: string,
+  ): Promise<Profile> {
     const trimmedName = name.trim();
     if (!trimmedName) {
       throw new Error('Profile name is required.');
@@ -77,7 +100,17 @@ export class LocalProfileRepository implements ProfileRepository {
     return toProfile(entry);
   }
 
-  async update(
+  update(
+    profileId: string,
+    name: string,
+    avatarColor: string,
+  ): Promise<Profile> {
+    return this.enqueueMutation(() =>
+      this.updateInternal(profileId, name, avatarColor),
+    );
+  }
+
+  private async updateInternal(
     profileId: string,
     name: string,
     avatarColor: string,
@@ -105,7 +138,11 @@ export class LocalProfileRepository implements ProfileRepository {
     return toProfile(updated);
   }
 
-  async remove(profileId: string): Promise<void> {
+  remove(profileId: string): Promise<void> {
+    return this.enqueueMutation(() => this.removeInternal(profileId));
+  }
+
+  private async removeInternal(profileId: string): Promise<void> {
     const registry = getProfileRegistry();
     if (!registry.some(entry => entry.id === profileId)) {
       return;

@@ -2,10 +2,13 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useTheme } from 'react-native-paper';
 
 // No avatar color palette is specified in spec.md beyond "name and
-// avatar/color" (FR-1) — this fixed set of 8 distinguishable, WCAG-friendly
-// accents is a Phase 1 UI decision, not a stakeholder-locked one. Shared by
+// avatar/color" (FR-1) — this fixed set of 8 distinguishable accents is a
+// Phase 1 UI decision, not a stakeholder-locked one. Shared by
 // CreateProfileScreen and EditProfileScreen (spec.md's screen inventory
-// treats "Create/Edit Profile" as one screen concept).
+// treats "Create/Edit Profile" as one screen concept). Contrast for text
+// drawn on top of a swatch (ProfileTile's avatar initial) is handled per
+// swatch by app/theme's pickReadableTextColor, not by restricting this
+// palette to colors that happen to work with a single fixed text color.
 export const AVATAR_COLORS = [
   '#E57373',
   '#F06292',

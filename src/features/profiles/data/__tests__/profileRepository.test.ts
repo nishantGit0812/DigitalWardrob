@@ -108,6 +108,27 @@ describe('LocalProfileRepository.create', () => {
     );
     expect(getProfileRegistry()).toHaveLength(4);
   });
+
+  it('serializes concurrent creates so neither write is lost', async () => {
+    const repo = new LocalProfileRepository();
+
+    // Fired without awaiting the first — both read-check-write cycles start
+    // before either has written, which is exactly the interleaving that
+    // would silently drop one entry without the repository's mutation
+    // queue serializing them.
+    const [first, second] = await Promise.all([
+      repo.create('Priya', '#E57373'),
+      repo.create('Devraj', '#4FC3F7'),
+    ]);
+
+    expect(first.id).not.toBe(second.id);
+    expect(getProfileRegistry()).toHaveLength(2);
+    expect(
+      getProfileRegistry()
+        .map(entry => entry.id)
+        .sort(),
+    ).toEqual([first.id, second.id].sort());
+  });
 });
 
 describe('LocalProfileRepository.update', () => {

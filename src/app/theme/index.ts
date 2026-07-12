@@ -12,3 +12,4 @@ export {
   disabledContentColor,
   disabledContainerColor,
 } from './disabledState';
+export { pickReadableTextColor } from './textContrast';

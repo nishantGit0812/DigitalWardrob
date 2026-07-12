@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
+import { pickReadableTextColor } from '../../../app/theme';
 import type { Profile } from '../domain/Profile';
 
 const TILE_SIZE = 72;
@@ -18,6 +19,7 @@ interface ProfileTileProps {
 // so it's a distinct, clearly-labeled control instead.
 export function ProfileTile({ profile, onPress, onEdit }: ProfileTileProps) {
   const initial = profile.name.trim().charAt(0).toUpperCase();
+  const initialColor = pickReadableTextColor(profile.avatarColor);
 
   return (
     <View style={styles.container}>
@@ -28,7 +30,7 @@ export function ProfileTile({ profile, onPress, onEdit }: ProfileTileProps) {
         accessibilityLabel={`Open ${profile.name}'s profile`}
       >
         <View style={[styles.circle, { backgroundColor: profile.avatarColor }]}>
-          <Text variant="headlineSmall" style={styles.initial}>
+          <Text variant="headlineSmall" style={{ color: initialColor }}>
             {initial}
           </Text>
         </View>
@@ -64,9 +66,6 @@ const styles = StyleSheet.create({
     borderRadius: TILE_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  initial: {
-    color: '#FFFFFF',
   },
   label: {
     maxWidth: TILE_SIZE + 16,
