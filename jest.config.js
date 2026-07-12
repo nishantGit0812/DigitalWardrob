@@ -10,6 +10,6 @@ module.exports = {
       '<rootDir>/node_modules/@op-engineering/op-sqlite/node/dist/index.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@op-engineering/op-sqlite)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@op-engineering/op-sqlite|@react-navigation|react-native-screens)/)',
   ],
 };
