@@ -38,6 +38,7 @@ Carried over from project-level docs (not re-litigated here, see [`../tech-stack
 - Clean Architecture: `Presentation → Domain → Data → Native`, one-way dependency flow, enforced via ESLint import-boundary rules (spec §18a).
 - Feature-based folders: `features/<name>/{data,domain,presentation}`.
 - UI kit: React Native Paper (MD3). Navigation: React Navigation (native-stack + bottom-tabs). State: Redux Toolkit. Persisted UI state: Redux Persist → MMKV.
+- Testing: Jest for unit tests, **React Native Testing Library required for all component-level tests** (querying by role/text/label, not internals). `__tests__/App.test.tsx`, written before this was made explicit, still uses bare `react-test-renderer` — a known gap to close when RNTL is installed, not a pattern to repeat.
 - `minSdkVersion 31`, `targetSdkVersion 36`, Android only, no network permission in the manifest at all — CI and any generated manifest must not introduce one.
 - Conventional Commits; branch naming `feature/<ticket>-<short-desc>`.
 

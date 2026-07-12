@@ -53,6 +53,7 @@ Wardrobe apps today either require a cloud account and upload personal photos to
 | Biometrics | AndroidX Biometric |
 | Backup encryption | Google Tink (authenticated encryption, passphrase-derived key) |
 | Gestures/animation | React Native Reanimated, React Native Gesture Handler |
+| Testing | Jest (unit/integration), React Native Testing Library (component — required standard, see `specs/tech-stack.md`), Detox (E2E) |
 
 ## Architecture
 

@@ -15,3 +15,8 @@ Navigation root, providers, and theming for the app shell, per `docs/spec.md`
   requirements.md's carried-over decisions) has no task group in Phase 0's
   `plan.md` — there's no global state to manage until Phase 1 (Profiles &
   Security) introduces the active profile. Wiring starts there, not here.
+
+Component tests for `navigation/`/`theme/` screens must use React Native
+Testing Library (`tech-stack.md`). `__tests__/App.test.tsx` at the repo root
+predates this standard and still uses bare `react-test-renderer` — a known
+gap, not the pattern to follow for anything added here.
