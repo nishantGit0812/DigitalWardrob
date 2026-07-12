@@ -16,7 +16,13 @@ the interfaces defined in `../domain/`.
   and Task Group 4.3's Delete Profile wire up to — not the shared
   primitives directly.
 
-Profile registry CRUD and PIN handling (Task Group 3+, see
+- `profileRepository.ts` — `LocalProfileRepository`, implementing the
+  Domain's `ProfileRepository` port against the `app_meta` MMKV registry
+  (`shared/storage`) plus `profileStorageProvisioning.ts` (Task Group 3).
+  `create()` provisions storage before writing the registry entry, so a
+  failure never leaves an entry pointing at nonexistent storage.
+
+Edit/Delete Profile and PIN handling (Task Group 4/5, see
 `specs/roadmap.md`) still need to land here.
 
 Tested with Jest — unit tests for repository logic, integration tests against

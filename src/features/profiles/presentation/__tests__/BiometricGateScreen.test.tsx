@@ -82,7 +82,7 @@ describe('BiometricGateScreen', () => {
       name: 'Check again after setting up a device lock',
     });
 
-    fireEvent.press(retryButton);
+    await fireEvent.press(retryButton);
 
     await waitFor(() => expect(gateway.authenticate).toHaveBeenCalled());
   });
@@ -103,7 +103,7 @@ describe('BiometricGateScreen', () => {
 
     expect(await screen.findByText('Too many attempts.')).toBeOnTheScreen();
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', { name: 'Try authentication again' }),
     );
 
