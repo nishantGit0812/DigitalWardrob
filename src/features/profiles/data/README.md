@@ -8,9 +8,16 @@ the interfaces defined in `../domain/`.
   `TurboModuleRegistry.getEnforcing` throws outside a native binary.
 - `biometricGateway.ts` — `NativeBiometricGateway`, the only place allowed
   to import the codegen spec directly (Task Group 1).
+- `profileStorageProvisioning.ts` — `provisionProfileStorage`/
+  `deprovisionProfileStorage` (Task Group 2), composing
+  `shared/database`'s SQLite primitive with `shared/filesystem`'s image
+  directory primitive so a profile's DB file and image directory are
+  created/removed together. This is what Task Group 3.3's Create Profile
+  and Task Group 4.3's Delete Profile wire up to — not the shared
+  primitives directly.
 
-Profile creation/CRUD (Task Group 2+, see `specs/roadmap.md`) still needs to
-land here.
+Profile registry CRUD and PIN handling (Task Group 3+, see
+`specs/roadmap.md`) still need to land here.
 
 Tested with Jest — unit tests for repository logic, integration tests against
 an in-memory/temp SQLite instance (`tech-stack.md`).

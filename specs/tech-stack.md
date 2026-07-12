@@ -30,6 +30,7 @@ Phase 0 (already shipped — see [`roadmap.md`](roadmap.md)) predates the sectio
 | Typography | Bundled Inter variable font static assets (spec §28a.4) — no remote/Google Fonts fetch, kept offline-safe |
 | Local database access | op-sqlite (DAO layer, versioned migrations on app start) |
 | Key-value storage | MMKV (active profile id, theme mode, onboarding flag — chosen over AsyncStorage for synchronous hot-path reads) |
+| Filesystem access | `@dr.pogodin/react-native-fs` (per-profile image directory create/delete, Task Group 2; general file I/O for Phase 2+ wardrobe photos) — a maintained fork of the original `react-native-fs`, with full New Architecture/TurboModule support (this project's `newArchEnabled=true`). No filesystem library was chosen in Phase 0; this fills that gap as of Task Group 2. |
 | Biometric bridge (JS side) | AndroidX Biometric, via native bridge |
 
 **Explicitly not used:** RTK Query (no network layer to justify it — repository calls are async thunks into the Data layer).
