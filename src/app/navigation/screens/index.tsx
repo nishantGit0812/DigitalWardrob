@@ -7,4 +7,4 @@ export const WardrobeScreen = () => <PlaceholderScreen title="Wardrobe" />;
 export const OutfitsScreen = () => <PlaceholderScreen title="Outfits" />;
 export const PlannerScreen = () => <PlaceholderScreen title="Planner" />;
 export const StatisticsScreen = () => <PlaceholderScreen title="Statistics" />;
-export const SettingsScreen = () => <PlaceholderScreen title="Settings" />;
+export { SettingsScreen } from './SettingsScreen';
