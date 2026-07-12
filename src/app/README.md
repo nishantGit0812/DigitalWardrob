@@ -3,12 +3,12 @@
 Navigation root, providers, and theming for the app shell, per `docs/spec.md`
 §17.
 
-- `navigation/` — root stack + bottom-tab setup (Task Group 5).
-  `RootNavigator`'s flow is now BiometricGate → ProfileSelection →
-  (optionally CreateProfile/EditProfile) → MainTabs (Phase 1 Task Groups
-  1/3/4); Task Group 5 will insert PIN Entry between ProfileSelection and
-  MainTabs. Each of the 5 tabs (`screens/`) is a placeholder pending its
-  real Phase 2+ implementation.
+- `navigation/` — root stack + bottom-tab setup. `RootNavigator`'s flow is
+  now BiometricGate → ProfileSelection → (optionally CreateProfile/
+  EditProfile, and for PIN-protected profiles PinEntry, whose "Forgot PIN?"
+  loops back through the biometric gate into PinSetup) → MainTabs — Phase 1
+  (Task Groups 1/3/4/5) complete. Each of the 5 tabs (`screens/`) is a
+  placeholder pending its real Phase 2+ implementation.
 - `theme/` — MD3 light/dark tokens via React Native Paper (Task Group 6).
   `ThemeModeContext` holds the active mode in memory only (no-op per
   plan.md 6.2 — real persistence is roadmap 8.1); Settings' dark-mode

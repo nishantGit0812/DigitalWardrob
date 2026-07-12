@@ -5,7 +5,9 @@ import { Button } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { Metrics } from 'react-native-safe-area-context';
 import type { Profile } from '../../domain/Profile';
+import type { ProfilePinGateway } from '../../domain/profilePin';
 import type { ProfileRepository } from '../../domain/profileRepository';
+import { ProfilePinProvider } from '../ProfilePinContext';
 import { ProfileRepositoryProvider } from '../ProfileRepositoryContext';
 import { ProfileSelectionScreen } from '../ProfileSelectionScreen';
 
@@ -28,62 +30,85 @@ function fakeRepository(
   };
 }
 
+function fakePinGateway(
+  overrides: Partial<ProfilePinGateway> = {},
+): ProfilePinGateway {
+  return {
+    setPin: jest.fn().mockResolvedValue(undefined),
+    verifyPin: jest.fn().mockResolvedValue(false),
+    hasPin: jest.fn().mockResolvedValue(false),
+    clearPin: jest.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
 // useFocusEffect (used to refresh the list on refocus, e.g. after Edit
 // Profile) needs a real navigator ancestor, not just NavigationContainer —
 // a two-screen stack lets tests drive an actual focus/blur/refocus cycle.
 const TestStack = createNativeStackNavigator();
 
-async function renderScreen(repository: ProfileRepository) {
+async function renderScreen(
+  repository: ProfileRepository,
+  pinGateway: ProfilePinGateway = fakePinGateway(),
+) {
   const onProfileSelected = jest.fn();
   const onAddProfile = jest.fn();
   const onEditProfile = jest.fn();
+  const onPinRequired = jest.fn();
   await render(
     <SafeAreaProvider initialMetrics={TEST_METRICS}>
-      <ProfileRepositoryProvider repository={repository}>
-        <NavigationContainer>
-          <TestStack.Navigator screenOptions={{ headerShown: false }}>
-            <TestStack.Screen name="ProfileSelection">
-              {() => (
-                <ProfileSelectionScreen
-                  onProfileSelected={onProfileSelected}
-                  onAddProfile={onAddProfile}
-                  onEditProfile={onEditProfile}
-                />
-              )}
-            </TestStack.Screen>
-          </TestStack.Navigator>
-        </NavigationContainer>
-      </ProfileRepositoryProvider>
+      <ProfilePinProvider gateway={pinGateway}>
+        <ProfileRepositoryProvider repository={repository}>
+          <NavigationContainer>
+            <TestStack.Navigator screenOptions={{ headerShown: false }}>
+              <TestStack.Screen name="ProfileSelection">
+                {() => (
+                  <ProfileSelectionScreen
+                    onProfileSelected={onProfileSelected}
+                    onAddProfile={onAddProfile}
+                    onEditProfile={onEditProfile}
+                    onPinRequired={onPinRequired}
+                  />
+                )}
+              </TestStack.Screen>
+            </TestStack.Navigator>
+          </NavigationContainer>
+        </ProfileRepositoryProvider>
+      </ProfilePinProvider>
     </SafeAreaProvider>,
   );
-  return { onProfileSelected, onAddProfile, onEditProfile };
+  return { onProfileSelected, onAddProfile, onEditProfile, onPinRequired };
 }
 
 async function renderScreenWithBackNavigation(repository: ProfileRepository) {
   const onProfileSelected = jest.fn();
   const onAddProfile = jest.fn();
+  const onPinRequired = jest.fn();
   await render(
     <SafeAreaProvider initialMetrics={TEST_METRICS}>
-      <ProfileRepositoryProvider repository={repository}>
-        <NavigationContainer>
-          <TestStack.Navigator screenOptions={{ headerShown: false }}>
-            <TestStack.Screen name="ProfileSelection">
-              {({ navigation }) => (
-                <ProfileSelectionScreen
-                  onProfileSelected={onProfileSelected}
-                  onAddProfile={onAddProfile}
-                  onEditProfile={() => navigation.navigate('Other')}
-                />
-              )}
-            </TestStack.Screen>
-            <TestStack.Screen name="Other">
-              {({ navigation }) => (
-                <Button onPress={() => navigation.goBack()}>Back</Button>
-              )}
-            </TestStack.Screen>
-          </TestStack.Navigator>
-        </NavigationContainer>
-      </ProfileRepositoryProvider>
+      <ProfilePinProvider gateway={fakePinGateway()}>
+        <ProfileRepositoryProvider repository={repository}>
+          <NavigationContainer>
+            <TestStack.Navigator screenOptions={{ headerShown: false }}>
+              <TestStack.Screen name="ProfileSelection">
+                {({ navigation }) => (
+                  <ProfileSelectionScreen
+                    onProfileSelected={onProfileSelected}
+                    onAddProfile={onAddProfile}
+                    onEditProfile={() => navigation.navigate('Other')}
+                    onPinRequired={onPinRequired}
+                  />
+                )}
+              </TestStack.Screen>
+              <TestStack.Screen name="Other">
+                {({ navigation }) => (
+                  <Button onPress={() => navigation.goBack()}>Back</Button>
+                )}
+              </TestStack.Screen>
+            </TestStack.Navigator>
+          </NavigationContainer>
+        </ProfileRepositoryProvider>
+      </ProfilePinProvider>
     </SafeAreaProvider>,
   );
 }
@@ -124,12 +149,12 @@ describe('ProfileSelectionScreen', () => {
     expect(addAction.props.accessibilityState?.disabled).toBe(true);
   });
 
-  it('selecting a profile sets it active and calls onProfileSelected', async () => {
+  it('selecting a profile with no PIN sets it active and calls onProfileSelected', async () => {
     const repository = fakeRepository({
       list: jest.fn().mockResolvedValue([profileA]),
     });
 
-    const { onProfileSelected } = await renderScreen(repository);
+    const { onProfileSelected, onPinRequired } = await renderScreen(repository);
 
     await fireEvent.press(
       await screen.findByRole('button', {
@@ -139,6 +164,31 @@ describe('ProfileSelectionScreen', () => {
 
     expect(repository.setActiveProfileId).toHaveBeenCalledWith('a');
     expect(onProfileSelected).toHaveBeenCalledWith(profileA);
+    expect(onPinRequired).not.toHaveBeenCalled();
+  });
+
+  it('selecting a PIN-protected profile calls onPinRequired instead, without setting it active', async () => {
+    const repository = fakeRepository({
+      list: jest.fn().mockResolvedValue([profileA]),
+    });
+    const pinGateway = fakePinGateway({
+      hasPin: jest.fn().mockResolvedValue(true),
+    });
+
+    const { onProfileSelected, onPinRequired } = await renderScreen(
+      repository,
+      pinGateway,
+    );
+
+    await fireEvent.press(
+      await screen.findByRole('button', {
+        name: "Open Priya's profile",
+      }),
+    );
+
+    expect(onPinRequired).toHaveBeenCalledWith(profileA);
+    expect(repository.setActiveProfileId).not.toHaveBeenCalled();
+    expect(onProfileSelected).not.toHaveBeenCalled();
   });
 
   it('pressing Add Profile calls onAddProfile', async () => {

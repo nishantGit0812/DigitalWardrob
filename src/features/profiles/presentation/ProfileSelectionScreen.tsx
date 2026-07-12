@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Profile } from '../domain/Profile';
 import { MAX_PROFILES } from '../domain/profileRepository';
 import { AddProfileTile } from './AddProfileTile';
+import { useProfilePinGateway } from './ProfilePinContext';
 import { useProfileRepository } from './ProfileRepositoryContext';
 import { ProfileTile } from './ProfileTile';
 
@@ -13,21 +14,26 @@ interface ProfileSelectionScreenProps {
   onProfileSelected: (profile: Profile) => void;
   onAddProfile: () => void;
   onEditProfile: (profile: Profile) => void;
+  onPinRequired: (profile: Profile) => void;
 }
 
 // Grid of up to MAX_PROFILES profile tiles plus an Add Profile action
 // (plan.md 3.1). A plain wrapping flexbox rather than FlashList/FlatList —
 // at most 5 tiles ever render, so there's nothing to virtualize, and a
 // plain View lets the Add Profile tile reflow into the grid instead of
-// sitting in a separate footer row. No PIN gate yet: Task Group 5 will
-// insert PIN Entry between selecting a tile and onProfileSelected firing;
-// for now selection goes straight through.
+// sitting in a separate footer row. A PIN-protected profile (FR-4a, opt-in
+// per profile) routes to PIN Entry instead of straight through — and
+// setActiveProfileId is deliberately deferred to that success path rather
+// than fired here, so a profile is never marked active until it's actually
+// been unlocked (plan.md 5.2).
 export function ProfileSelectionScreen({
   onProfileSelected,
   onAddProfile,
   onEditProfile,
+  onPinRequired,
 }: ProfileSelectionScreenProps) {
   const repository = useProfileRepository();
+  const pinGateway = useProfilePinGateway();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const [profiles, setProfiles] = useState<Profile[] | null>(null);
@@ -51,11 +57,16 @@ export function ProfileSelectionScreen({
   );
 
   const handleSelect = useCallback(
-    (profile: Profile) => {
+    async (profile: Profile) => {
+      const hasPin = await pinGateway.hasPin(profile.id);
+      if (hasPin) {
+        onPinRequired(profile);
+        return;
+      }
       repository.setActiveProfileId(profile.id);
       onProfileSelected(profile);
     },
-    [repository, onProfileSelected],
+    [pinGateway, repository, onProfileSelected, onPinRequired],
   );
 
   const containerStyle = [

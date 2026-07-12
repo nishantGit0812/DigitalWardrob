@@ -7,6 +7,7 @@ import {
   type ProfileRegistryEntry,
 } from '../../../shared/storage';
 import type { Profile } from '../domain/Profile';
+import type { ProfilePinGateway } from '../domain/profilePin';
 import {
   MAX_PROFILES,
   type ProfileRepository,
@@ -43,6 +44,7 @@ export class LocalProfileRepository implements ProfileRepository {
   private mutationQueue: Promise<unknown> = Promise.resolve();
 
   constructor(
+    private readonly pinGateway: ProfilePinGateway,
     private readonly dbLocation?: string,
     private readonly imageBaseDir?: string,
   ) {}
@@ -151,15 +153,15 @@ export class LocalProfileRepository implements ProfileRepository {
     // Task Group 4.3: cascading storage removal (Task Group 2.3) before the
     // registry entry — mirrors create()'s ordering. deprovisionProfileStorage
     // tolerates already-missing storage, so a retried delete after a partial
-    // failure is always safe to call again.
-    //
-    // PIN hash removal (Task Group 5) will need to extend this once PIN
-    // storage exists — a no-op today since no PIN system has landed yet.
+    // failure is always safe to call again. If it throws, the PIN hash and
+    // registry entry are deliberately left in place too — same "don't
+    // remove the entry until storage removal is confirmed" reasoning.
     await deprovisionProfileStorage(
       profileId,
       this.dbLocation,
       this.imageBaseDir,
     );
+    await this.pinGateway.clearPin(profileId);
     setProfileRegistry(registry.filter(entry => entry.id !== profileId));
 
     if (getStoredActiveProfileId() === profileId) {

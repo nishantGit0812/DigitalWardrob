@@ -4,6 +4,7 @@ import {
   setActiveProfileId,
 } from '../../../../shared/storage';
 import { appMetaStorage } from '../../../../shared/storage/mmkv';
+import type { ProfilePinGateway } from '../../domain/profilePin';
 import { LocalProfileRepository } from '../profileRepository';
 
 const mockProvisionProfileStorage = jest.fn();
@@ -17,6 +18,22 @@ jest.mock('../profileStorageProvisioning', () => ({
     mockDeprovisionProfileStorage(...args),
 }));
 
+function fakePinGateway(
+  overrides: Partial<ProfilePinGateway> = {},
+): ProfilePinGateway {
+  return {
+    setPin: jest.fn().mockResolvedValue(undefined),
+    verifyPin: jest.fn().mockResolvedValue(false),
+    hasPin: jest.fn().mockResolvedValue(false),
+    clearPin: jest.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+function createRepository(pinGateway: ProfilePinGateway = fakePinGateway()) {
+  return new LocalProfileRepository(pinGateway);
+}
+
 beforeEach(() => {
   appMetaStorage.clearAll();
   mockProvisionProfileStorage.mockReset().mockResolvedValue(undefined);
@@ -25,11 +42,11 @@ beforeEach(() => {
 
 describe('LocalProfileRepository.list', () => {
   it('is empty by default', async () => {
-    await expect(new LocalProfileRepository().list()).resolves.toEqual([]);
+    await expect(createRepository().list()).resolves.toEqual([]);
   });
 
   it('returns profiles oldest-first regardless of registry order', async () => {
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
     const first = await repo.create('Priya', '#E57373');
     const second = await repo.create('Devraj', '#4FC3F7');
 
@@ -39,7 +56,7 @@ describe('LocalProfileRepository.list', () => {
   });
 
   it('does not expose createdAt on the Domain-facing Profile', async () => {
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
     const created = await repo.create('Priya', '#E57373');
 
     expect(created).toEqual({
@@ -57,7 +74,7 @@ describe('LocalProfileRepository.create', () => {
       callOrder.push('provision');
     });
 
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
     await repo.create('Priya', '#E57373');
     callOrder.push(
       getProfileRegistry().length === 1 ? 'registry-written' : 'unexpected',
@@ -69,14 +86,14 @@ describe('LocalProfileRepository.create', () => {
   it('never writes a registry entry if provisioning fails', async () => {
     mockProvisionProfileStorage.mockRejectedValue(new Error('disk full'));
 
-    await expect(
-      new LocalProfileRepository().create('Priya', '#E57373'),
-    ).rejects.toThrow('disk full');
+    await expect(createRepository().create('Priya', '#E57373')).rejects.toThrow(
+      'disk full',
+    );
     expect(getProfileRegistry()).toEqual([]);
   });
 
   it('rejects an empty or whitespace-only name', async () => {
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
 
     await expect(repo.create('', '#E57373')).rejects.toThrow(
       'Profile name is required.',
@@ -88,16 +105,13 @@ describe('LocalProfileRepository.create', () => {
   });
 
   it('trims the name before storing it', async () => {
-    const created = await new LocalProfileRepository().create(
-      '  Priya  ',
-      '#E57373',
-    );
+    const created = await createRepository().create('  Priya  ', '#E57373');
 
     expect(created.name).toBe('Priya');
   });
 
   it('rejects a 5th profile once 4 already exist', async () => {
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
     await repo.create('P1', '#E57373');
     await repo.create('P2', '#F06292');
     await repo.create('P3', '#BA68C8');
@@ -110,7 +124,7 @@ describe('LocalProfileRepository.create', () => {
   });
 
   it('serializes concurrent creates so neither write is lost', async () => {
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
 
     // Fired without awaiting the first — both read-check-write cycles start
     // before either has written, which is exactly the interleaving that
@@ -133,7 +147,7 @@ describe('LocalProfileRepository.create', () => {
 
 describe('LocalProfileRepository.update', () => {
   it('renames and re-colors an existing profile in place', async () => {
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
     const created = await repo.create('Priya', '#E57373');
 
     const updated = await repo.update(created.id, 'Priya S.', '#4FC3F7');
@@ -147,7 +161,7 @@ describe('LocalProfileRepository.update', () => {
   });
 
   it('preserves createdAt so the grid order is unaffected by an edit', async () => {
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
     const first = await repo.create('Priya', '#E57373');
     const second = await repo.create('Devraj', '#4FC3F7');
 
@@ -157,7 +171,7 @@ describe('LocalProfileRepository.update', () => {
   });
 
   it('rejects an empty or whitespace-only name', async () => {
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
     const created = await repo.create('Priya', '#E57373');
 
     await expect(repo.update(created.id, '', '#4FC3F7')).rejects.toThrow(
@@ -170,14 +184,14 @@ describe('LocalProfileRepository.update', () => {
 
   it('rejects an unknown profileId', async () => {
     await expect(
-      new LocalProfileRepository().update('missing', 'Name', '#E57373'),
+      createRepository().update('missing', 'Name', '#E57373'),
     ).rejects.toThrow('Profile missing does not exist.');
   });
 });
 
 describe('LocalProfileRepository.remove', () => {
   it('deprovisions storage and removes the registry entry', async () => {
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
     const created = await repo.create('Priya', '#E57373');
 
     await repo.remove(created.id);
@@ -196,7 +210,7 @@ describe('LocalProfileRepository.remove', () => {
       callOrder.push('deprovision');
     });
 
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
     const created = await repo.create('Priya', '#E57373');
     await repo.remove(created.id);
     callOrder.push(
@@ -207,7 +221,7 @@ describe('LocalProfileRepository.remove', () => {
   });
 
   it('leaves other profiles untouched', async () => {
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
     const first = await repo.create('Priya', '#E57373');
     const second = await repo.create('Devraj', '#4FC3F7');
 
@@ -216,8 +230,18 @@ describe('LocalProfileRepository.remove', () => {
     expect(await repo.list()).toEqual([second]);
   });
 
+  it('clears the PIN hash as part of the cascade (Task Group 5)', async () => {
+    const pinGateway = fakePinGateway();
+    const repo = createRepository(pinGateway);
+    const created = await repo.create('Priya', '#E57373');
+
+    await repo.remove(created.id);
+
+    expect(pinGateway.clearPin).toHaveBeenCalledWith(created.id);
+  });
+
   it('clears activeProfileId if it pointed at the deleted profile', async () => {
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
     const created = await repo.create('Priya', '#E57373');
     setActiveProfileId(created.id);
 
@@ -227,7 +251,7 @@ describe('LocalProfileRepository.remove', () => {
   });
 
   it('leaves activeProfileId untouched if it points at a different profile', async () => {
-    const repo = new LocalProfileRepository();
+    const repo = createRepository();
     const first = await repo.create('Priya', '#E57373');
     const second = await repo.create('Devraj', '#4FC3F7');
     setActiveProfileId(second.id);
@@ -239,7 +263,7 @@ describe('LocalProfileRepository.remove', () => {
 
   it('is idempotent for an already-removed or unknown profileId', async () => {
     await expect(
-      new LocalProfileRepository().remove('never-existed'),
+      createRepository().remove('never-existed'),
     ).resolves.toBeUndefined();
     expect(mockDeprovisionProfileStorage).not.toHaveBeenCalled();
   });

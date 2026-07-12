@@ -92,7 +92,31 @@ describe('CreateProfileScreen', () => {
       expect(repository.create).toHaveBeenCalledWith('Priya', '#E57373'),
     );
     expect(repository.setActiveProfileId).toHaveBeenCalledWith('p1');
-    expect(onCreated).toHaveBeenCalledWith(created);
+    expect(onCreated).toHaveBeenCalledWith(created, false);
+  });
+
+  it('signals wantsPin=true when the PIN toggle is on', async () => {
+    const created: Profile = {
+      id: 'p1',
+      name: 'Priya',
+      avatarColor: '#E57373',
+    };
+    const repository = fakeRepository({
+      create: jest.fn().mockResolvedValue(created),
+    });
+
+    const { onCreated } = await renderScreen(repository);
+    await fireEvent.changeText(screen.getByLabelText('Profile name'), 'Priya');
+    await fireEvent(
+      screen.getByLabelText('Protect this profile with a PIN'),
+      'valueChange',
+      true,
+    );
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Create profile' }),
+    );
+
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith(created, true));
   });
 
   it('creates with whichever color swatch was selected', async () => {

@@ -7,6 +7,7 @@ import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.wardrobeai.nativemodules.biometric.BiometricGatePackage
+import com.wardrobeai.nativemodules.profilepin.ProfilePinPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -18,6 +19,7 @@ class MainApplication : Application(), ReactApplication {
           // Local nativemodules/ packages aren't autolinked (that only covers
           // npm packages), so they're added manually here.
           add(BiometricGatePackage())
+          add(ProfilePinPackage())
         },
     )
   }

@@ -17,6 +17,8 @@ module.exports = {
     // jest.mock, which takes precedence over this fallback per test file.
     'native/NativeBiometricGate$':
       '<rootDir>/src/features/profiles/data/native/__mocks__/NativeBiometricGate.ts',
+    'native/NativeProfilePin$':
+      '<rootDir>/src/features/profiles/data/native/__mocks__/NativeProfilePin.ts',
   },
   // react-native-reanimated/react-native-worklets ship ESM-only source
   // (no commonjs build) and must go through Babel like the app's own code.

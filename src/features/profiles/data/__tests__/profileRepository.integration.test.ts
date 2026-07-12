@@ -5,7 +5,17 @@ import * as path from 'node:path';
 import { appMetaStorage } from '../../../../shared/storage/mmkv';
 import { getProfileDatabaseName } from '../../../../shared/database';
 import { getProfileImageDirectoryPath } from '../../../../shared/filesystem';
+import type { ProfilePinGateway } from '../../domain/profilePin';
 import { LocalProfileRepository } from '../profileRepository';
+
+function fakePinGateway(): ProfilePinGateway {
+  return {
+    setPin: jest.fn().mockResolvedValue(undefined),
+    verifyPin: jest.fn().mockResolvedValue(false),
+    hasPin: jest.fn().mockResolvedValue(false),
+    clearPin: jest.fn().mockResolvedValue(undefined),
+  };
+}
 
 // Exercises the full real Data-layer stack (MMKV registry + op-sqlite's
 // Node façade + the RNFS Jest mock backed by real node:fs) end to end,
@@ -22,7 +32,7 @@ describe('LocalProfileRepository storage isolation on delete', () => {
       path.join(os.tmpdir(), 'wardrobeai-repo-isolation-test-'),
     );
     appMetaStorage.clearAll();
-    repo = new LocalProfileRepository(tempDir, tempDir);
+    repo = new LocalProfileRepository(fakePinGateway(), tempDir, tempDir);
   });
 
   afterEach(() => {

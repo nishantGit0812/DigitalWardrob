@@ -8,6 +8,12 @@ the interfaces defined in `../domain/`.
   `TurboModuleRegistry.getEnforcing` throws outside a native binary.
 - `biometricGateway.ts` — `NativeBiometricGateway`, the only place allowed
   to import the codegen spec directly (Task Group 1).
+- `native/NativeProfilePin.ts` — codegen spec for the `profilepin`
+  TurboModule (Task Group 5); bcrypt hashing and Keystore-backed
+  EncryptedSharedPreferences storage both happen natively (spec.md §26) —
+  the plaintext PIN only ever exists transiently on the JS side.
+- `profilePinGateway.ts` — `NativeProfilePinGateway`, the only place
+  allowed to import that codegen spec directly.
 - `profileStorageProvisioning.ts` — `provisionProfileStorage`/
   `deprovisionProfileStorage` (Task Group 2), composing
   `shared/database`'s SQLite primitive with `shared/filesystem`'s image
@@ -18,19 +24,22 @@ the interfaces defined in `../domain/`.
 
 - `profileRepository.ts` — `LocalProfileRepository`, implementing the
   Domain's `ProfileRepository` port against the `app_meta` MMKV registry
-  (`shared/storage`) plus `profileStorageProvisioning.ts` (Task Group 3/4).
-  `create()` provisions storage before writing the registry entry, and
-  `remove()` deprovisions storage before removing it — both so a failure
-  never leaves a registry entry pointing at storage that doesn't match its
-  state. `remove()` also clears `activeProfileId` if it pointed at the
-  deleted profile. The constructor's `dbLocation`/`imageBaseDir` params
-  exist purely for tests (real disk I/O against a temp dir, mirroring
-  `profileStorageProvisioning.ts`'s own override params) — production
-  code always uses `new LocalProfileRepository()` with both omitted.
+  (`shared/storage`) plus `profileStorageProvisioning.ts` (Task Group 3/4)
+  and a `ProfilePinGateway` (Task Group 5, constructor-injected — required,
+  not optional, since App.tsx always has a real one to hand it). `create()`
+  provisions storage before writing the registry entry; `remove()`
+  deprovisions storage, then clears the PIN hash, then removes the registry
+  entry — each step gates the next so a failure never leaves the registry
+  pointing at storage/PIN state that doesn't match. `remove()` also clears
+  `activeProfileId` if it pointed at the deleted profile. All mutating
+  methods (`create`/`update`/`remove`) are serialized through an internal
+  mutation queue, since each does an unguarded read-check-write against the
+  registry that two overlapping calls could otherwise interleave. The
+  constructor's `dbLocation`/`imageBaseDir` params exist purely for tests
+  (real disk I/O against a temp dir) — production code always passes both
+  as `undefined`.
 
-PIN handling (Task Group 5, see `specs/roadmap.md`) still needs to land
-here — including extending `remove()`'s cascading delete to also clear a
-profile's PIN hash once that storage exists.
+Phase 1 is now feature-complete (Task Groups 1-6, see `specs/roadmap.md`).
 
 Tested with Jest — unit tests for repository logic, integration tests against
 an in-memory/temp SQLite instance (`tech-stack.md`).

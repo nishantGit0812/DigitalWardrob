@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import {
   Button,
   HelperText,
+  Switch,
   Text,
   TextInput,
   useTheme,
@@ -13,17 +14,22 @@ import { AVATAR_COLORS, AvatarColorPicker } from './AvatarColorPicker';
 import { useProfileRepository } from './ProfileRepositoryContext';
 
 interface CreateProfileScreenProps {
-  onCreated: (profile: Profile) => void;
+  // `wantsPin` tells the caller (RootNavigator) whether to route into PIN
+  // Setup next (plan.md 5.1) or straight into MainTabs — this screen itself
+  // stays navigation-agnostic.
+  onCreated: (profile: Profile, wantsPin: boolean) => void;
 }
 
 // Name input + avatar/color picker (plan.md 3.2), wired to Task Group 2's
 // storage provisioning via LocalProfileRepository.create (plan.md 3.3).
+// The PIN toggle is optional (FR-4a) — most profiles won't set one.
 export function CreateProfileScreen({ onCreated }: CreateProfileScreenProps) {
   const repository = useProfileRepository();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const [name, setName] = useState('');
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
+  const [wantsPin, setWantsPin] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
@@ -39,7 +45,7 @@ export function CreateProfileScreen({ onCreated }: CreateProfileScreenProps) {
     try {
       const profile = await repository.create(trimmedName, avatarColor);
       repository.setActiveProfileId(profile.id);
-      onCreated(profile);
+      onCreated(profile, wantsPin);
     } catch (creationError) {
       setError(
         creationError instanceof Error
@@ -48,7 +54,7 @@ export function CreateProfileScreen({ onCreated }: CreateProfileScreenProps) {
       );
       setIsSubmitting(false);
     }
-  }, [canSubmit, repository, trimmedName, avatarColor, onCreated]);
+  }, [canSubmit, repository, trimmedName, avatarColor, wantsPin, onCreated]);
 
   return (
     <View
@@ -76,6 +82,15 @@ export function CreateProfileScreen({ onCreated }: CreateProfileScreenProps) {
         onSelect={setAvatarColor}
       />
 
+      <View style={styles.row}>
+        <Text variant="bodyLarge">Protect with a PIN</Text>
+        <Switch
+          value={wantsPin}
+          onValueChange={setWantsPin}
+          accessibilityLabel="Protect this profile with a PIN"
+        />
+      </View>
+
       {error && (
         <HelperText type="error" visible>
           {error}
@@ -100,5 +115,10 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     gap: 16,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
 });

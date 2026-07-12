@@ -8,8 +8,10 @@ import { Alert } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { Metrics } from 'react-native-safe-area-context';
 import type { Profile } from '../../domain/Profile';
+import type { ProfilePinGateway } from '../../domain/profilePin';
 import type { ProfileRepository } from '../../domain/profileRepository';
 import { EditProfileScreen } from '../EditProfileScreen';
+import { ProfilePinProvider } from '../ProfilePinContext';
 import { ProfileRepositoryProvider } from '../ProfileRepositoryContext';
 
 const TEST_METRICS: Metrics = {
@@ -33,21 +35,40 @@ function fakeRepository(
   };
 }
 
-async function renderScreen(repository: ProfileRepository) {
+function fakePinGateway(
+  overrides: Partial<ProfilePinGateway> = {},
+): ProfilePinGateway {
+  return {
+    setPin: jest.fn().mockResolvedValue(undefined),
+    verifyPin: jest.fn().mockResolvedValue(false),
+    hasPin: jest.fn().mockResolvedValue(false),
+    clearPin: jest.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+async function renderScreen(
+  repository: ProfileRepository,
+  pinGateway: ProfilePinGateway = fakePinGateway(),
+) {
   const onSaved = jest.fn();
   const onDeleted = jest.fn();
+  const onSetupPin = jest.fn();
   await render(
     <SafeAreaProvider initialMetrics={TEST_METRICS}>
-      <ProfileRepositoryProvider repository={repository}>
-        <EditProfileScreen
-          profile={profile}
-          onSaved={onSaved}
-          onDeleted={onDeleted}
-        />
-      </ProfileRepositoryProvider>
+      <ProfilePinProvider gateway={pinGateway}>
+        <ProfileRepositoryProvider repository={repository}>
+          <EditProfileScreen
+            profile={profile}
+            onSaved={onSaved}
+            onDeleted={onDeleted}
+            onSetupPin={onSetupPin}
+          />
+        </ProfileRepositoryProvider>
+      </ProfilePinProvider>
     </SafeAreaProvider>,
   );
-  return { onSaved, onDeleted };
+  return { onSaved, onDeleted, onSetupPin };
 }
 
 describe('EditProfileScreen', () => {
@@ -59,6 +80,19 @@ describe('EditProfileScreen', () => {
       screen.getByRole('button', { name: 'Avatar color #E57373' }).props
         .accessibilityState?.selected,
     ).toBe(true);
+  });
+
+  it('pre-fills the PIN toggle from the profile’s current PIN state', async () => {
+    const pinGateway = fakePinGateway({
+      hasPin: jest.fn().mockResolvedValue(true),
+    });
+
+    await renderScreen(fakeRepository({}), pinGateway);
+
+    const toggle = await screen.findByLabelText(
+      'Protect this profile with a PIN',
+    );
+    await waitFor(() => expect(toggle.props.value).toBe(true));
   });
 
   it('saves the renamed/re-colored profile and calls onSaved', async () => {
@@ -116,6 +150,46 @@ describe('EditProfileScreen', () => {
       await screen.findByText('Profile a does not exist.'),
     ).toBeOnTheScreen();
     expect(onSaved).not.toHaveBeenCalled();
+  });
+
+  it('routes to onSetupPin instead of onSaved when PIN protection is turned on', async () => {
+    const updated: Profile = { ...profile };
+    const repository = fakeRepository({
+      update: jest.fn().mockResolvedValue(updated),
+    });
+
+    const { onSaved, onSetupPin } = await renderScreen(repository);
+    await fireEvent(
+      await screen.findByLabelText('Protect this profile with a PIN'),
+      'valueChange',
+      true,
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(onSetupPin).toHaveBeenCalledWith(updated));
+    expect(onSaved).not.toHaveBeenCalled();
+  });
+
+  it('clears the PIN and calls onSaved when PIN protection is turned off', async () => {
+    const updated: Profile = { ...profile };
+    const repository = fakeRepository({
+      update: jest.fn().mockResolvedValue(updated),
+    });
+    const pinGateway = fakePinGateway({
+      hasPin: jest.fn().mockResolvedValue(true),
+    });
+
+    const { onSaved, onSetupPin } = await renderScreen(repository, pinGateway);
+    const toggle = await screen.findByLabelText(
+      'Protect this profile with a PIN',
+    );
+    await waitFor(() => expect(toggle.props.value).toBe(true));
+    await fireEvent(toggle, 'valueChange', false);
+    await fireEvent.press(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(pinGateway.clearPin).toHaveBeenCalledWith('a'));
+    expect(onSaved).toHaveBeenCalledWith(updated);
+    expect(onSetupPin).not.toHaveBeenCalled();
   });
 
   it('confirms before deleting, with explicit "cannot be undone" copy', async () => {

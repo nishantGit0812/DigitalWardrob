@@ -120,4 +120,9 @@ dependencies {
     // Backs nativemodules/biometric (Task Group 1) — BIOMETRIC_WEAK |
     // DEVICE_CREDENTIAL support requires 1.1.0+.
     implementation("androidx.biometric:biometric:1.1.0")
+
+    // Backs nativemodules/profilepin (Task Group 5) — Keystore-backed
+    // EncryptedSharedPreferences for PIN hash storage, jBCrypt for hashing.
+    implementation("androidx.security:security-crypto:1.1.0")
+    implementation("org.mindrot:jbcrypt:0.4")
 }

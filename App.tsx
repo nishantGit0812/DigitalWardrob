@@ -17,13 +17,16 @@ import {
 } from './src/app/theme';
 import { NativeBiometricGateway } from './src/features/profiles/data/biometricGateway';
 import { LocalProfileRepository } from './src/features/profiles/data/profileRepository';
+import { NativeProfilePinGateway } from './src/features/profiles/data/profilePinGateway';
 import { BiometricGateProvider } from './src/features/profiles/presentation/BiometricGateContext';
+import { ProfilePinProvider } from './src/features/profiles/presentation/ProfilePinContext';
 import { ProfileRepositoryProvider } from './src/features/profiles/presentation/ProfileRepositoryContext';
 
 // Composition root: the only place the concrete Data-layer implementations
 // are imported and handed to Presentation via context (spec.md §18a).
 const biometricGateway = new NativeBiometricGateway();
-const profileRepository = new LocalProfileRepository();
+const profilePinGateway = new NativeProfilePinGateway();
+const profileRepository = new LocalProfileRepository(profilePinGateway);
 
 function ThemedApp() {
   const { mode } = useThemeMode();
@@ -45,11 +48,13 @@ function App() {
   return (
     <SafeAreaProvider>
       <BiometricGateProvider gateway={biometricGateway}>
-        <ProfileRepositoryProvider repository={profileRepository}>
-          <ThemeModeProvider>
-            <ThemedApp />
-          </ThemeModeProvider>
-        </ProfileRepositoryProvider>
+        <ProfilePinProvider gateway={profilePinGateway}>
+          <ProfileRepositoryProvider repository={profileRepository}>
+            <ThemeModeProvider>
+              <ThemedApp />
+            </ThemeModeProvider>
+          </ProfileRepositoryProvider>
+        </ProfilePinProvider>
       </BiometricGateProvider>
     </SafeAreaProvider>
   );
