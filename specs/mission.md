@@ -1,6 +1,6 @@
 # Mission
 
-Source of truth for *why* this product exists and *what* it must (and must not) do. Derived from stakeholder input in [`docs/spec.md`](../docs/spec.md) (spec v1.2.0-draft). If this file and the spec ever disagree, treat that as a signal to reconcile them, not to silently pick one.
+Source of truth for *why* this product exists and *what* it must (and must not) do. Derived from stakeholder input in [`docs/spec.md`](../docs/spec.md) (spec v1.3.1-draft). If this file and the spec ever disagree, treat that as a signal to reconcile them, not to silently pick one.
 
 ## Product Vision
 
@@ -39,7 +39,7 @@ These are load-bearing for the product's entire value proposition — any implem
 1. **Zero data leaves the device.** No network permission, no analytics/telemetry SDKs (including crash reporters that phone home), no backend of any kind.
 2. **Profile isolation is real, not cosmetic.** Enforced at the storage layer (separate SQLite file per profile), not just filtered in the UI.
 3. **Backups are encrypted by default,** with no passphrase-recovery mechanism — this is a deliberate, disclosed trade-off, not an oversight.
-4. **Accessible by default.** WCAG-aligned: 48dp touch targets, TalkBack-compatible, contrast-compliant in both light and dark mode.
+4. **Accessible by default.** WCAG-aligned: 48dp touch targets, TalkBack-compatible, contrast-compliant in both light and dark mode, and every decorative animation respects the system reduced-motion setting rather than assuming motion is always welcome (spec §28a.7) — this isn't a Phase 0 concern, but it's binding starting with the first phase that ships an animation.
 5. **Try-on is a preview, not a promise.** Manual reposition/scale/rotate exists specifically because automatic placement won't always be perfect — the product sets that expectation rather than overselling AR realism.
 
 ## Definition of Done (product-level)

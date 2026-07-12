@@ -1,6 +1,8 @@
 # Tech Stack
 
-Technology decisions for WardrobeAI, as finalized in [`docs/spec.md`](../docs/spec.md) (spec v1.2.0-draft, §8, §20–§22, §40). These are treated as locked for v1 unless a decision here is explicitly revisited — the spec's changelog shows prior "to be confirmed" items were deliberately closed out before freeze, so don't reopen them without cause.
+Technology decisions for WardrobeAI, as finalized in [`docs/spec.md`](../docs/spec.md) (spec v1.3.1-draft, §8, §20–§22, §28a, §40). These are treated as locked for v1 unless a decision here is explicitly revisited — the spec's changelog shows prior "to be confirmed" items were deliberately closed out before freeze, so don't reopen them without cause.
+
+Phase 0 (already shipped — see [`roadmap.md`](roadmap.md)) predates the sections below marked "since §28a"; nothing here changes what Phase 0 already built, only what Phase 1 onward should build on top of it.
 
 ## Platform & Target
 
@@ -24,7 +26,8 @@ Technology decisions for WardrobeAI, as finalized in [`docs/spec.md`](../docs/sp
 | Lists | FlashList (virtualized, for wardrobe grid / outfit pickers) |
 | Gestures/animation | React Native Reanimated, React Native Gesture Handler |
 | Layout primitives | React Native Safe Area Context, React Native Screens |
-| Icons | React Native Vector Icons |
+| Icons | React Native Vector Icons (Material Symbols base set) + React Native SVG (custom wardrobe-specific icon subset, spec §28a.5) — every icon used as a tab/chip selection indicator ships an outlined *and* filled variant, no exceptions (a Phase 0 draft of this section's predecessor originally missed this for one custom icon; see spec §28a.5) |
+| Typography | Bundled Inter variable font static assets (spec §28a.4) — no remote/Google Fonts fetch, kept offline-safe |
 | Local database access | op-sqlite (DAO layer, versioned migrations on app start) |
 | Key-value storage | MMKV (active profile id, theme mode, onboarding flag — chosen over AsyncStorage for synchronous hot-path reads) |
 | Biometric bridge (JS side) | AndroidX Biometric, via native bridge |
@@ -68,6 +71,14 @@ Presentation → Domain → Data → Native
 - Feature-based folder structure (`features/<name>/{data,domain,presentation}`), enforced via ESLint import boundary rules — no reaching into another feature's internals except through its public `presentation` exports or a shared `domain` interface.
 
 Full rule set: spec §18a.
+
+## Accessibility & UX Patterns (since §28a)
+
+No new libraries — these are usage patterns on top of dependencies already listed above, required starting with whichever Phase 1+ feature first introduces the relevant UI (see `roadmap.md`):
+
+- **Reduced motion**: every non-gesture animation (toggles, screen transitions, the planner "Worn" microinteraction) must branch on React Native's `AccessibilityInfo.isReduceMotionEnabled()` / `reduceMotionChanged` event — which reflects Android's system "Remove animations" setting — and skip straight to the end state when it's on. Gesture-driven Try-On layer transforms (Reanimated, direct 1:1 response to touch) are exempt. Spec §28a.7.
+- **Disabled state**: standard MD3 treatment (38% opacity content / 12% opacity container), derived from the same on-surface/surface tokens already in the theme rather than a separate hardcoded gray — applies wherever a control is conditionally disabled (Add Profile at 4/4, category delete blocked, an unfilled Outfit Builder slot). Spec §28a.9.
+- **Loading treatment**: `ActivityIndicator` (React Native Paper) for single-result waits with no progressive layout (Background Removal Review, Try-On Canvas); Reanimated-based skeleton/shimmer for list-shaped first loads (Wardrobe grid, Outfit Builder pickers) — no separate skeleton library needed. Spec §28a.9.
 
 ## Testing
 

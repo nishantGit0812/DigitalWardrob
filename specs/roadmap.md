@@ -8,6 +8,8 @@ Phase numbers are stable identifiers for planning/tracking, not calendar weeks. 
 
 **Consolidated from an earlier 12-phase draft** (see git history for the original Phase 0–11 breakdown): three pairs of adjacent, tightly-coupled, small phases were merged — Outfits+Favorites, Planner+Statistics, and Settings&Polish+Hardening&Release — since each pair shared a dependency chain and neither half had independent shippable value without the other. One phase (Background Removal) stayed standalone despite being small, because it's a native-model spike with genuine open risk that's easier to timebox in isolation. Dependency ordering is unchanged; only numbering and grouping shifted.
 
+**Sub-items added by the spec's 1.3.1 UX review** (§28a): folded into whichever phase first touches the affected screen, rather than opening a new phase — none of them are large enough to justify their own phase, and doing it this way keeps each phase's own feature grouped with its own polish. Phase 0 is complete and intentionally untouched by this pass; all additions below land in Phase 1 or later.
+
 ## Phase 0 — Foundation
 
 - **0.1** Project scaffolding: RN + TypeScript (`strict: true`), ESLint + Prettier + Husky pre-commit, CI skeleton (lint + test on PR).
@@ -28,6 +30,7 @@ Phase numbers are stable identifiers for planning/tracking, not calendar weeks. 
 - **1.7** Per-profile PIN setup during profile creation (FR-4a), salted/hashed, stored via `EncryptedSharedPreferences`.
 - **1.8** PIN entry gate on profile selection.
 - **1.9** Forgot-PIN reset via re-passing the device biometric gate (FR-4b).
+- **1.10** Disabled-state token (38%/12% opacity on the shared on-surface/surface theme colors, spec §28a.9) added to the theme and applied to its first consumer: the "Add Profile" action once 4/4 profiles exist (1.2). Every later disabled control (category delete, Outfit Builder slots) reuses this token rather than inventing its own.
 
 ## Phase 2 — Wardrobe Core
 
@@ -49,6 +52,7 @@ Phase numbers are stable identifiers for planning/tracking, not calendar weeks. 
 - **3.1** Spike: evaluate 2–3 candidate lightweight matting TFLite models against sample clothing photos; pick one.
 - **3.2** Native garment-matting module (Kotlin, TFLite interpreter) wired via TurboModule.
 - **3.3** Background Removal Review screen (before/after toggle, retry), inserted into the add-item flow between crop and metadata (FR-7).
+- **3.4** Wire the matting-model wait (3.2/3.3) to the spec's defined loading treatment — indeterminate `ActivityIndicator`, not a skeleton, since there's no partial layout to reveal (spec §28a.9) — and to the reduced-motion check (§28a.7) for its enter/exit transition.
 
 ## Phase 4 — Outfits & Favorites
 
@@ -59,6 +63,7 @@ Phase numbers are stable identifiers for planning/tracking, not calendar weeks. 
 - **4.5** Outfit delete, with planner-impact confirmation when planner entries reference it (FR-13).
 - **4.6** Favorite/unfavorite toggle on item detail and outfit detail.
 - **4.7** Favorites screen (Items / Outfits tabs), filtered query only — no new table.
+- **4.8** Outfit Builder empty-wardrobe illustration state ("Add a few wardrobe items before building your first outfit," linking to Wardrobe's add-item flow, spec §28a.6) — closes the gap where a first-run user can reach Outfit Builder (a sibling bottom tab, not gated behind Wardrobe) before adding any items. Category slots also apply the 1.10 disabled-state token before a valid item is picked.
 
 ## Phase 5 — Planner & Statistics
 
@@ -72,6 +77,7 @@ Phase numbers are stable identifiers for planning/tracking, not calendar weeks. 
 - **5.8** Most-worn / least-worn / never-worn (unworn) views.
 - **5.9** Category breakdown (item count + wear count by category).
 - **5.10** Statistics Dashboard screen wiring all of the above (FR-21, read-only derived views only — no stats table).
+- **5.11** Worn/Planned/Skipped status badges wired to the semantic status color tokens, including the on-fill text/icon colors and the corrected Skipped pairing (spec §28a.3 — the 1.3.0 draft's plain-Outline Skipped label fell just under the 4.5:1 body-text contrast bar it claimed to meet; fixed to the Secondary token before this phase consumes it).
 
 ## Phase 6 — Virtual Try-On
 
@@ -86,6 +92,7 @@ The largest native/CV surface in the app; deliberately sequenced after the core 
 - **6.7** Manual reposition/scale/rotate gestures per layer (Reanimated + Gesture Handler), pre-save.
 - **6.8** Save or discard the final composited preview image.
 - **6.9** Wire "Try On" entry point directly from Outfit Detail (FR-14).
+- **6.10** Try-On bottom-tab icon: draw both the outlined-idle and filled-selected variants (spec §28a.5 — the 1.3.0 draft specified only one drawing, the sole icon in the tab bar that would otherwise have lacked a selected-state variant). Wire the pose/segmentation/compositing wait (6.2–6.6) to the same `ActivityIndicator` loading treatment as 3.4.
 
 ## Phase 7 — Backup & Restore
 
@@ -99,7 +106,7 @@ The largest native/CV surface in the app; deliberately sequenced after the core 
 
 - **8.1** Dark Mode toggle (System/Light/Dark) — real implementation, replacing the Phase 0 stub.
 - **8.2** Biometric timeout setting.
-- **8.3** Accessibility pass: `accessibilityLabel`s, 48dp touch targets, TalkBack verification across all screens.
+- **8.3** Accessibility pass: `accessibilityLabel`s, 48dp touch targets, TalkBack verification across all screens, and a reduced-motion verification pass (system "Remove animations" on → every decorative animation added since Phase 1 collapses to its end state instantly; spec §28a.7) — added as an explicit checklist item in the 1.3.1 review since motion is as much a WCAG-alignment concern (NFR-7) as contrast and touch targets, and it's cheap to miss when each animation is added piecemeal per-phase rather than swept at once.
 - **8.4** Both-orientation layout pass, prioritizing camera/crop/try-on screens.
 - **8.5** Local-only structured logging + manual log export via SAF (no third-party crash/analytics SDK).
 - **8.6** Profile-isolation integration test (no query/file path can cross profile boundaries).

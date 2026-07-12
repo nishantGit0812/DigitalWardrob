@@ -1,12 +1,16 @@
 # WardrobeAI — Software Specification (spec.md)
 
-**Version:** 1.2.0-draft
+**Version:** 1.3.1-draft
 **Status:** DRAFT — pending review and freeze
-**Last updated:** 2026-07-10
+**Last updated:** 2026-07-12
 
 **Changelog (1.0.0 → 1.1.0):** Architecture/QA review pass. Fixed `wear_log` cascade behavior, `planner_entries` CHECK constraint, and category-delete UX gap. Added per-profile PIN (FR-4a/4b), default backup encryption (moved up from Future Roadmap), outfit-delete confirmation, un-mark-worn semantics, NFR-3 warm-run scoping, three new test-plan items, and switched native modules from Java to Kotlin. See inline changes below.
 
 **Changelog (1.1.0 → 1.2.0):** Pre-freeze cleanup pass. Removed the `price` field/feature entirely (including the cost-per-wear roadmap item). Made `season` a fixed enum via CHECK constraint. Made wardrobe search behavior explicit in FR-10 (case-insensitive, partial-match, name/brand/tag, composable with filters). Finalized backup encryption to Google Tink with authenticated encryption and passphrase-derived keys (no more "or equivalent" wording). Finalized storage tech decisions: MMKV for key-value storage, op-sqlite for SQLite access — no more open "to be confirmed" choices. Added a new §18a Architecture Rules section. Standardized on "Profile Body Photo" terminology throughout.
+
+**Changelog (1.2.0 → 1.3.0):** UX pass. Added new §28a UX Design System, covering brand identity/tone, logo and adaptive app icon spec, MD3 light/dark color tokens (seed colors plus semantic status colors), typography, a base + custom iconography system, illustration/empty-state guidelines, and motion principles — all deliberately gender-neutral for the app's 20–40, mixed-gender target audience. Updated Dependency Plan (§40) with the typography and custom-icon libraries this introduces.
+
+**Changelog (1.3.0 → 1.3.1):** Senior UX review pass on §28a, plus a document-integrity fix. Restored §32–§43 (Risk Analysis through Release Checklist), which were accidentally deleted by a truncated edit during the 1.3.0 draft — no content in those sections changed from the last frozen version. UX review fixes: added missing on-color pairs for the semantic status table and corrected a sub-AA contrast pairing for the "Skipped" status (§28a.3); defined the selected-state variant for the custom Try-On tab icon (§28a.5); added the Outfit-Builder-with-an-empty-wardrobe illustration gap (§28a.6); added a reduced-motion accommodation tied to the system animator setting (§28a.7); and added a new §28a.9 covering loading-state treatment for the two multi-second CV waits (background removal, try-on compositing) and a disabled-state token, neither of which had a defined visual treatment despite disabled/loading UI already existing elsewhere in this spec.
 
 ---
 
@@ -608,6 +612,118 @@ All models ship bundled in the APK/AAB (as TFLite `.tflite` / MediaPipe `.task` 
 - Dark mode and light mode both meet WCAG AA contrast minimums.
 - English-only at launch (per project decision), but all user-facing strings are externalized into a single strings resource file from day one rather than inlined — trivial-cost future-proofing for localization even though only one locale ships in v1.
 
+## 28a. UX Design System — Brand Identity, Themes & Iconography
+
+This section makes the "Material Design 3, dark-mode-capable, accessible UI" commitment in §2 and the accessibility rules in §28 concrete enough to hand to an implementer: a real logo/icon spec, real MD3 color tokens, a typeface, and an icon system — rather than leaving the visual language as an unstated assumption.
+
+**Target demographic note:** the app's primary audience is men and women, roughly 20–40 (§4 already reflects this — Priya and Devraj are deliberately one woman, one man, plus a mixed-gender household persona). Every choice below is made to read as neutral to that whole range: no pink/blue gender-coding, no gendered iconography or illustration, and wardrobe category art (dresses, suits, sarees, streetwear, etc.) is treated as equally first-class rather than defaulting to one style of wardrobe.
+
+### 28a.1 Brand Identity & Tone
+
+- **Personality**: confident, minimal, quietly technical — closer to a well-made physical object (a good hanger, a tailor's tape) than a typical "closet app." The privacy story (zero backend, FR-29a encryption, NFR-1) is a feature, not a disclaimer, so the tone is reassuring rather than legalistic.
+- **Voice**: encouraging and non-judgmental, especially anywhere Statistics (§21/FR-21) surfaces unworn items — the app is helping someone notice, not shaming them. Example: "Haven't worn this in 90 days" rather than "You're wasting money on clothes you don't wear."
+- **Gender neutrality is a tone rule, not just a palette rule**: microcopy avoids "his/her wardrobe" phrasing (already correctly generic in this spec) and category/tag suggestions are not pre-populated with gendered defaults.
+
+### 28a.2 Logo & App Icon
+
+- **Mark**: an abstract logomark of two overlapping garment-hanger silhouettes whose negative space forms a soft, rounded "W" — drawn as a single continuous 2dp stroke so it can double as both the wordmark's lockup icon and the adaptive app icon foreground. Deliberately geometric and object-based (a hanger, not a figure) so it carries no body-shape or gender signal.
+- **Wordmark**: "wardrobe" set in lowercase Inter (see §28a.4), with "AI" as a small caps badge in the Tertiary accent color immediately after it — signals the on-device AI capability without a robot/circuit-board cliché.
+- **Lockup rules**: icon-only mark for the app icon, favicon, and splash screen; icon + wordmark lockup for the Settings "About" screen and any future marketing/store-listing assets. Minimum clear space around the mark = the height of the mark itself; never recolor the mark to anything outside the Primary/On-Primary pair.
+- **Android adaptive icon** (`android/app/src/main/res/mipmap-anydpi-v26/`): background layer = a flat Primary-color fill (or a subtle two-stop Primary→Primary-Container gradient); foreground layer = the logomark centered in the 66dp safe zone of the 108dp adaptive icon canvas. A **monochrome themed-icon layer** (`res/drawable`, Android 13+ themed icons) is also shipped so the icon correctly tints to the user's Material You system palette on API 33+ devices — free to support since the project's `minSdkVersion 31`/`targetSdkVersion 36` (§8) already assumes recent Android.
+- **Splash screen**: icon-only mark, centered, on a flat Surface-color background matching whichever theme (light/dark) the system is currently in — no splash illustration, so first paint is instant and doesn't fight the "app respects your time/privacy" tone.
+
+### 28a.3 Color System
+
+Seed colors below are the three inputs a Material Theme Builder (or equivalent MD3 token generator) run should use to produce the full 0–100 tonal palettes and derived on-*/*-container roles; the table gives the concrete light/dark values for the roles actually used in this app's screens (§13/§14), so an implementer isn't blocked waiting on the full generation step.
+
+| Role (seed) | Hex | Rationale |
+|---|---|---|
+| Primary seed | `#4F46E5` (indigo/violet) | Brand color — primary buttons, FAB, selected tab, focused input. Reads as confident/technical, not gendered. |
+| Secondary seed | `#5C5B77` (muted indigo-gray) | Lower-emphasis UI — filter chips, secondary buttons, unselected segmented controls. |
+| Tertiary seed | `#A6440A` (warm terracotta/rust) | Accent used *only* for the favorite-heart fill and stat callouts — warm without being pink/rose-coded. |
+
+| Role | Light | Dark |
+|---|---|---|
+| Primary / On Primary | `#4F46E5` / `#FFFFFF` | `#C6C1FF` / `#1F1370` |
+| Primary Container / On Primary Container | `#E4E1FF` / `#140666` | `#372DAA` / `#E4E1FF` |
+| Secondary / On Secondary | `#5C5B77` / `#FFFFFF` | `#C5C4E8` / `#2D2D46` |
+| Secondary Container / On Secondary Container | `#E1E0F9` / `#191836` | `#434260` / `#E1E0F9` |
+| Tertiary / On Tertiary (favorite-heart fill) | `#A6440A` / `#FFFFFF` | `#FFB599` / `#5D1900` |
+| Tertiary Container / On Tertiary Container | `#FFDBCB` / `#390D00` | `#832800` / `#FFDBCB` |
+| Error / On Error (MD3 baseline) | `#B3261E` / `#FFFFFF` | `#F2B8B5` / `#601410` |
+| Background / Surface | `#FFFBFF` | `#1B1B1F` |
+| On Surface | `#1B1B1F` | `#E5E1E9` |
+| Surface Variant / On Surface Variant | `#E4E1EC` / `#47464F` | `#47464F` / `#C8C5D0` |
+| Outline | `#78767F` | `#928F99` |
+
+**Semantic status colors** (Planner §14/FR-17, Statistics §14/FR-21) are kept deliberately separate from the Tertiary brand accent, since "worn" is a functional/positive signal, not a brand moment. Each status gets an explicit "on-" pair (fill + the color used on top of it), matching the pattern already used for the MD3 roles above — the 1.3.0 draft only specified the fill color and left the paired content color implicit, which isn't enough for an implementer to build a badge component from:
+
+| Status | Fill (Light / Dark) | On-Fill text/icon (Light / Dark) | Used for |
+|---|---|---|---|
+| Worn / Success | `#2E7D5B` / `#8FD9B4` | `#FFFFFF` / `#0B3823` | "Worn" planner badge (filled), positive stat highlights |
+| Planned | Secondary Container | On Secondary Container | Future planner entries |
+| Skipped | `#5C5B77` (Secondary, de-emphasized text/icon only — no fill) | Same color, no separate on-color needed | Skipped planner entries — intentionally muted, not red/error-colored |
+
+**Skipped status correction:** the 1.3.0 draft specified plain `Outline` (`#78767F` light) for the Skipped label. Measured against the `#FFFBFF` light Surface it sits on, that pairing is ~4.4:1 — it clears the 3:1 bar for icons/large text but falls just short of the 4.5:1 bar this same section claims for body text, and the Skipped label is body-size text, not an icon. Swapped to the Secondary token (`#5C5B77` light / `#C5C4E8` dark), which is deliberately muted like Outline but is already verified elsewhere in this table at body-text contrast, so it satisfies the "intentionally de-emphasized" intent without failing its own stated bar.
+
+All pairs above meet WCAG AA contrast (≥4.5:1 for body text, ≥3:1 for large text/icons) per NFR-7/§28; both theme objects are exported from `src/app/theme/light.ts` and `dark.ts` (§17) as `MD3LightTheme`/`MD3DarkTheme` overrides for React Native Paper.
+
+### 28a.4 Typography
+
+- **Typeface**: Inter (variable font) for all UI text — a neutral geometric-humanist sans with no gendered or regional connotation, excellent legibility at small sizes (wardrobe grid labels, stat tables), and a tabular-figures variant used specifically on the Statistics dashboard so wear-count columns align.
+- Bundled as static font assets (`src/shared/assets/fonts/`) rather than a remote/Google-Fonts fetch, keeping first paint offline-safe and consistent with NFR-1/NFR-5.
+- Practical scale mapped to MD3 roles (full 15-step MD3 type scale applies; these are the roles actually authored per screen):
+
+| MD3 role | Weight/size | Used for |
+|---|---|---|
+| Headline Small | Inter SemiBold / 24sp | Screen titles (Wardrobe, Planner, Statistics) |
+| Title Medium | Inter SemiBold / 16sp | Card/list-item headers (item name, outfit name) |
+| Body Medium | Inter Regular / 14sp | Metadata, descriptions, form field values |
+| Label Large | Inter Medium / 14sp | Buttons, chips, tab labels |
+| Display Small | Inter Bold / 36sp, tabular figures | Empty-state / celebratory numbers (e.g. "12 items never worn") |
+
+### 28a.5 Iconography
+
+- **Base set**: Material Symbols (Rounded style, variable weight), 24dp grid, 2dp stroke at default optical size — matches the MD3/React Native Paper baseline already in the Dependency Plan (§40) and gives free coverage of generic actions (search, filter, edit, delete, settings, calendar).
+- **Selection state pattern**: Outlined icon for unselected/idle state, Filled variant of the same symbol for selected/active state — the standard MD3 bottom-navigation and chip pattern, applied consistently across the bottom tab bar (§12) and filter chips (FR-10).
+- **Custom icon subset** — needed because Material Symbols has no wardrobe-specific vocabulary; drawn in the same 24dp/2dp-stroke rounded style so they sit invisibly alongside the base set (delivered as SVGs via `react-native-svg`, not a second icon font):
+
+| Concept | Approach |
+|---|---|
+| Background-removal / cutout (FR-7) | Custom: a garment silhouette with a dashed cutout outline around it |
+| Virtual Try-On (FR-14/FR-25) | Custom: a person silhouette with a stacked garment-layer icon overlaid. Used on the bottom tab bar (§12), so it needs both states from the Selection state pattern above: an outlined idle variant and a filled/solid variant for the selected tab — the 1.3.0 draft only specified one drawing, which would have made the Try-On tab the one inconsistent icon in the bar (every Material Symbol tab icon already gets both states for free). Both variants ship as a pair of SVGs, same as any other two-state icon in this table. |
+| Mark worn / planner entry | Standard Material Symbol (`event_available`) — no custom icon needed |
+| Wear count | No flame/streak icon — deliberately avoided; a flame implies gamified "streaks," which misrepresents a wardrobe-tracking stat and could read as pressuring the user to wear things more. Shown as a plain numeric badge on the item thumbnail instead |
+| Favorite | Standard Material Symbol (`favorite`), outlined idle / filled in Tertiary color when active |
+| Profile PIN / lock (FR-4a) | Standard Material Symbols (`lock`, `pin`) — no custom icon needed |
+| Backup / Restore (FR-29/FR-30) | Custom: a crossed-out cloud paired with a small shield, reinforcing the "never leaves the device, but still protected" message specifically on the Backup/Restore screen header |
+
+### 28a.6 Illustration & Empty States
+
+- **Style**: single-weight line illustrations (same 2dp stroke as the icon system), faceless/abstracted human figures with a visibly varied range of body shapes where a figure is shown at all (e.g. the Profile Body Photo capture guide overlay, §14) — no facial features, no gendered silhouette cues, so every user sees themselves as plausibly represented.
+- Screens needing a dedicated illustration: empty Wardrobe grid ("Add your first item"), empty Planner ("Plan your first outfit"), empty Favorites, the all-caught-up/no-unworn-items state in Statistics (framed as a positive milestone, not just an empty list), and the Profile Body Photo capture guide overlay itself.
+- **Outfit Builder with zero wardrobe items** ("Add a few wardrobe items before building your first outfit," with a direct link to Wardrobe's add-item flow) — added in the 1.3.1 review: nothing in the bottom-tab flow (§12) stops a first-run user from opening Outfit Builder before adding any items, since Wardrobe and Outfit Builder are sibling tabs, not a forced sequence. Without this state, a new user's first tap into Outfit Builder shows empty category slots with no explanation, a dead end the other empty states in this list were already designed to avoid.
+
+### 28a.7 Motion & Microinteractions
+
+- Standard MD3 durations/easing for state changes: 100–200ms for toggles (favorite, chip select), ~300ms standard-easing for screen transitions.
+- Try-On layer drag/scale/rotate (FR-26, §19) already uses Reanimated spring physics rather than fixed-duration easing, for responsive 60fps gesture feedback — this section just confirms the same spring-based approach extends to the favorite-heart "bounce" on toggle.
+- Marking a planner entry "Worn" (FR-17) gets a brief checkmark scale-in + a single haptic tick — deliberately restrained rather than a confetti burst, since the 20–40 target audience skews toward the brand feeling capable/quietly polished rather than gamified.
+- **Reduced motion:** every animation in this section (spring-based drag/scale/rotate excepted, since that's a direct 1:1 gesture response rather than a decorative transition) must check the system's reduced-motion preference — RN's `AccessibilityInfo.isReduceMotionEnabled()`/`AccessibilityInfo.addEventListener('reduceMotionChanged', …)`, which reflects Android's "Remove animations" accessibility setting — and substitute an instant or near-instant (≤50ms) state change when it's on. This was missing from the 1.3.0 draft despite NFR-7/§28 already committing this project to WCAG-aligned accessibility; motion preference is as much a part of that commitment as contrast and touch targets, and costs nothing extra to support since Reanimated (§40) already sits under every animation this spec defines.
+
+### 28a.8 Component Theming Notes
+
+- `src/app/theme/light.ts` and `dark.ts` (§17, §19) export `MD3LightTheme`/`MD3DarkTheme`-shaped objects built from the tokens in §28a.3, passed into React Native Paper's `PaperProvider theme={...}` at the app root, with `configureFonts` pointed at the Inter type scale in §28a.4.
+- Adaptive icon and monochrome themed-icon assets live under `android/app/src/main/res/mipmap-anydpi-v26/` and `res/drawable` (§17) alongside the other native Android assets.
+- Custom SVG icons (§28a.5) live in `src/shared/assets/icons/` as a peer to the font assets, imported through a small typed icon-name map rather than referenced by raw file path, so a future icon swap touches one file.
+
+### 28a.9 Loading & Disabled States
+
+Added in the 1.3.1 review: §27 (Performance Strategy) already requires a loading state for any operation over ~150ms, and this spec independently calls out two CV waits that can take up to 3 seconds (background removal, NFR-3's try-on compositing budget) plus several disabled controls (Add Profile at 4, category delete blocked while items are assigned, outfit category slots before an item is picked) — but the 1.3.0 draft never defined what either actually looks like, leaving both to be improvised per screen.
+
+- **Loading treatment**: a Primary-colored indeterminate spinner (React Native Paper `ActivityIndicator`) for waits with no meaningful partial content to show (Background Removal Review while the matting model runs, Try-On Canvas while pose/segmentation/compositing run) — a skeleton placeholder isn't used here because these screens don't reveal layout progressively, they reveal one finished image. Skeleton/shimmer placeholders (built on Reanimated, already in the Dependency Plan — no new library) are reserved for list-shaped content instead: the Wardrobe grid and Outfit Builder item pickers on first data load from SQLite.
+- **Disabled state token**: standard MD3 disabled treatment — 38% opacity applied to disabled content (label/icon) and 12% opacity to disabled container fill, computed against the same On-Surface/Surface tokens in §28a.3 rather than a separate hardcoded gray, so disabled controls stay correct across light/dark automatically. Applies to: the "Add Profile" action at 4/4 profiles (§14), the category-delete action when items are still assigned (FR-8), and an Outfit Builder category slot before its item picker has a valid selection.
+
 ## 29. Testing Strategy
 
 | Layer | Tooling | Scope |
@@ -740,7 +856,8 @@ A feature is "done" when: code merged to `develop` behind passing CI (lint + tes
 | SQLite | op-sqlite |
 | Gestures/animation | React Native Reanimated, React Native Gesture Handler |
 | Layout primitives | React Native Safe Area Context, React Native Screens |
-| Icons | React Native Vector Icons |
+| Icons | React Native Vector Icons (Material Symbols base set, §28a.5), React Native SVG (custom wardrobe-specific icon subset, §28a.5) |
+| Typography | Bundled Inter variable font static assets (§28a.4) — no remote font fetch |
 | Key-value storage | MMKV |
 | Computer vision (native) | MediaPipe Android SDK (Pose, Selfie Segmentation), TensorFlow Lite (garment matting), OpenCV Android |
 | Async/concurrency (native) | Kotlin Coroutines |
@@ -772,4 +889,4 @@ Semantic Versioning (`MAJOR.MINOR.PATCH`) for the app itself, tracked in both `p
 
 ---
 
-*This document is a DRAFT pending your review. Items in §32 (Risks) and §34 (Open Questions) are the only pieces intentionally left unresolved — everything else reflects the decisions made during Discovery and the v1.1 architecture/QA review pass. Flag anything you want changed before we freeze it and move to Phase 4 (Architecture).*
+*This document is a DRAFT pending your review. Items in §32 (Risks) and §34 (Open Questions) are the only pieces intentionally left unresolved — everything else reflects the decisions made during Discovery and the v1.1 architecture/QA review pass. Flag anything you want changed before we freeze it and move to Phase 4 (Architecture).* 
