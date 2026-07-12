@@ -14,6 +14,14 @@ describe('getProfileDatabaseName', () => {
   it('follows the wardrobe_<profileId>.db naming convention', () => {
     expect(getProfileDatabaseName('abc123')).toBe('wardrobe_abc123.db');
   });
+
+  it('rejects a profileId containing path separators or traversal', () => {
+    expect(() => getProfileDatabaseName('../etc/passwd')).toThrow(
+      'Invalid profileId',
+    );
+    expect(() => getProfileDatabaseName('a/b')).toThrow('Invalid profileId');
+    expect(() => getProfileDatabaseName('')).toThrow('Invalid profileId');
+  });
 });
 
 describe('openProfileDatabase', () => {
@@ -98,5 +106,31 @@ describe('openProfileDatabase', () => {
     expect(getUserVersion(third)).toBe(2);
     expect(v2Applied).toBe(1);
     third.close();
+  });
+
+  it('closes the connection on a failed migration, allowing a clean retry', () => {
+    const profileId = 'profile-fail-retry';
+    const failingMigration: Migration[] = [
+      {
+        version: 1,
+        up: () => {
+          throw new Error('boom');
+        },
+      },
+    ];
+
+    expect(() =>
+      openProfileDatabase(profileId, failingMigration, tempDir),
+    ).toThrow('boom');
+
+    const workingMigration: Migration[] = [
+      {
+        version: 1,
+        up: db => db.executeSync('CREATE TABLE items (id INTEGER PRIMARY KEY)'),
+      },
+    ];
+    const db = openProfileDatabase(profileId, workingMigration, tempDir);
+    expect(getUserVersion(db)).toBe(1);
+    db.close();
   });
 });

@@ -16,9 +16,10 @@ export function getUserVersion(db: DB): number {
 }
 
 export function runMigrations(db: DB, migrations: Migration[]): void {
+  const currentVersion = getUserVersion(db);
   const pending = [...migrations]
     .sort((a, b) => a.version - b.version)
-    .filter(migration => migration.version > getUserVersion(db));
+    .filter(migration => migration.version > currentVersion);
 
   for (const migration of pending) {
     db.executeSync('BEGIN');
