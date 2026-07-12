@@ -18,6 +18,13 @@ const INITIAL_PROFILE_MIGRATIONS: Migration[] = [];
 // `dbLocation`/`imageBaseDir` mirror the underlying primitives' own
 // location params — left undefined in production, overridden to a shared
 // temp dir in tests.
+//
+// No compensating cleanup if the directory step throws after the DB step
+// succeeds — left safe by both primitives being idempotent on retry:
+// openProfileDatabase() reopens an existing file rather than erroring, and
+// mkdir's recursive create is a no-op if the directory is already there. A
+// caller (Task Group 3's Create Profile) can therefore just retry this
+// function as a whole rather than needing to track partial state.
 export async function provisionProfileStorage(
   profileId: string,
   dbLocation?: string,

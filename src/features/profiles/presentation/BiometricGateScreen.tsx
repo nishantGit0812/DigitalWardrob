@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import Animated, {
@@ -37,6 +37,17 @@ export function BiometricGateScreen({
   const reduceMotionEnabled = useReducedMotionPreference();
   const [state, setState] = useState<GateState>({ phase: 'checking' });
 
+  // Guards the setState calls below, which follow an `await` — RootNavigator
+  // replaces this screen outright on success, but Strict Mode's dev-time
+  // double-invoke (or a fast unmount mid-check) could otherwise still land a
+  // "set state on an unmounted component" warning.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const opacity = useSharedValue(reduceMotionEnabled ? 1 : 0);
 
   useEffect(() => {
@@ -73,6 +84,9 @@ export function BiometricGateScreen({
       'Unlock WardrobeAI',
       "Confirm it's you to continue",
     );
+    if (!isMountedRef.current) {
+      return;
+    }
 
     if (outcome.type === 'success') {
       finishWithTransition();
@@ -91,6 +105,10 @@ export function BiometricGateScreen({
   const checkAndPrompt = useCallback(async () => {
     setState({ phase: 'checking' });
     const availability = await gateway.checkAvailability();
+    if (!isMountedRef.current) {
+      return;
+    }
+
     if (availability === 'available') {
       await runAuthentication();
     } else {
