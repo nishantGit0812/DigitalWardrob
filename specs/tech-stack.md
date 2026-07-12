@@ -1,6 +1,6 @@
 # Tech Stack
 
-Technology decisions for WardrobeAI, as finalized in [`Digital_Wardroad.md`](../Digital_Wardroad.md) (spec v1.2.0-draft, §8, §20–§22, §40). These are treated as locked for v1 unless a decision here is explicitly revisited — the spec's changelog shows prior "to be confirmed" items were deliberately closed out before freeze, so don't reopen them without cause.
+Technology decisions for WardrobeAI, as finalized in [`docs/spec.md`](../docs/spec.md) (spec v1.2.0-draft, §8, §20–§22, §40). These are treated as locked for v1 unless a decision here is explicitly revisited — the spec's changelog shows prior "to be confirmed" items were deliberately closed out before freeze, so don't reopen them without cause.
 
 ## Platform & Target
 

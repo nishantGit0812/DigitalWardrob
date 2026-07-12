@@ -1,6 +1,6 @@
 # DigitalWardrob (WardrobeAI)
 
-**Status:** Specification phase — see [`Digital_Wardroad.md`](./Digital_Wardroad.md) for the full spec (v1.2.0-draft).
+**Status:** Phase 0 (Foundation) complete, merged to `develop`. Phase 1 (Profiles & Security) is next. See [`docs/spec.md`](./docs/spec.md) for the full spec (v1.2.0-draft) and [`specs/roadmap.md`](./specs/roadmap.md) for phase tracking.
 
 WardrobeAI is an offline-first Android application that lets a person digitize their physical wardrobe, organize it, plan outfits, and preview how clothing looks on them via on-device 2D virtual try-on — with zero backend, zero account, and zero data ever leaving the device. Up to four people can share one installation through fully isolated local profiles (e.g. a household), each with their own wardrobe, photos, planner, and stats.
 
@@ -68,7 +68,7 @@ Data (repositories, SQLite DAOs, file storage, native bridges)
 Native (Kotlin TurboModules — pose, segmentation, matting, compositing, backup, biometric, profile PIN)
 ```
 
-Each `features/<x>/` module is self-contained (`data/domain/presentation`), enforced via ESLint import boundaries. See [`Digital_Wardroad.md`](./Digital_Wardroad.md) §18–§18a for the full architecture diagram and rules.
+Each `features/<x>/` module is self-contained (`data/domain/presentation`), enforced via ESLint import boundaries. See [`docs/spec.md`](./docs/spec.md) §18–§18a for the full architecture diagram and rules.
 
 ## Device Target
 
@@ -101,9 +101,7 @@ See spec §17 for the complete breakdown.
 
 ## Development
 
-This project is currently in the specification/pre-implementation phase — no application code has been committed yet. Once implementation begins:
-
-- `develop` is the integration branch; feature branches are cut as `feature/<ticket>-<short-desc>` and PR back into `develop` with required passing CI + review.
+- `develop` is the integration branch; feature branches are cut as `feature/<ticket>-<short-desc>` and PR back into `develop` with required passing CI + review. Each roadmap phase (see `specs/roadmap.md`) uses one branch for its whole duration, not one per task group.
 - `main` is release-only, always deployable and tagged.
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `chore:`, `refactor:`, `test:`, `docs:`, `perf:`).
 
@@ -111,4 +109,4 @@ See spec §41–§43 for the full Git strategy, versioning strategy, and release
 
 ## Documentation
 
-The full software specification — product vision, functional/non-functional requirements, database design, screen specs, architecture, testing strategy, risk analysis, and more — lives in [`Digital_Wardroad.md`](./Digital_Wardroad.md).
+The full software specification — product vision, functional/non-functional requirements, database design, screen specs, architecture, testing strategy, risk analysis, and more — lives in [`docs/spec.md`](./docs/spec.md). Phase-by-phase planning docs (`mission.md`, `roadmap.md`, `tech-stack.md`, and per-phase `requirements.md`/`plan.md`) live under `specs/`.

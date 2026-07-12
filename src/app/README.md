@@ -11,4 +11,7 @@ Navigation root, providers, and theming for the app shell, per `docs/spec.md`
   `ThemeModeContext` holds the active mode in memory only (no-op per
   plan.md 6.2 — real persistence is roadmap 10.1); Settings' dark-mode
   switch drives it for manual light/dark contrast verification.
-- `store/` — Redux store setup, Redux Persist config (Task Group 5 onward).
+- `store/` — not created yet. Redux Toolkit + Redux Persist (tech-stack.md,
+  requirements.md's carried-over decisions) has no task group in Phase 0's
+  `plan.md` — there's no global state to manage until Phase 1 (Profiles &
+  Security) introduces the active profile. Wiring starts there, not here.
