@@ -30,11 +30,11 @@ How to know Phase 0 is actually done, not just "code exists." Mirrors mission.md
 **Task Group 5 — Navigation**
 - [ ] App launches directly into the bottom-tab shell with all planned tabs present and switchable.
 - [ ] Each tab renders its placeholder screen without crashing.
-- [ ] TalkBack can reach and announce each tab (accessibility isn't deferred to Phase 10 for basic navigation — mission.md's "accessible by default" is non-negotiable from the start).
+- [ ] TalkBack can reach and announce each tab (accessibility isn't deferred to Phase 8 for basic navigation — mission.md's "accessible by default" is non-negotiable from the start).
 
 **Task Group 6 — Theming**
 - [ ] Dark-mode toggle visibly changes MD3 tokens across the placeholder screens.
-- [ ] Toggle is confirmed to be a no-op across app restarts (i.e. it does *not* persist) — this is the expected Phase 0 behavior, not a bug; re-check this box specifically so no one "fixes" it early and steps on roadmap 10.1's scope.
+- [ ] Toggle is confirmed to be a no-op across app restarts (i.e. it does *not* persist) — this is the expected Phase 0 behavior, not a bug; re-check this box specifically so no one "fixes" it early and steps on roadmap 8.1's scope.
 - [ ] Manual check in both light and dark mode for contrast compliance (WCAG-aligned per mission.md).
 
 ## Phase-Level Definition of Done

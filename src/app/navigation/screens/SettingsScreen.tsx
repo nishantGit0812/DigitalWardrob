@@ -6,7 +6,7 @@ import { PlaceholderScreen } from './PlaceholderScreen';
 // Dark-mode toggle per plan.md 6.2 — deliberately a no-op setting: it only
 // flips ThemeModeContext's in-memory state to drive Paper's theme for manual
 // light/dark QA (6.3). It does NOT persist (no MMKV/Redux write); real
-// persistence is roadmap 10.1. Labeled "preview only" so this stays visibly
+// persistence is roadmap 8.1. Labeled "preview only" so this stays visibly
 // a stub rather than silently becoming the real implementation.
 export function SettingsScreen() {
   const { mode, toggle } = useThemeMode();

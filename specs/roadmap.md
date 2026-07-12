@@ -1,10 +1,12 @@
 # Roadmap
 
-High-level implementation order for WardrobeAI, broken into small phases. Each phase is scoped to be independently buildable and verifiable (usually a day or less of focused work) rather than a whole feature at once — the goal is a steady sequence of small, demonstrable steps, not a handful of big-bang milestones.
+High-level implementation order for WardrobeAI, broken into small phases. Each phase is scoped to be independently buildable and verifiable rather than a whole feature at once — the goal is a steady sequence of small, demonstrable steps, not a handful of big-bang milestones.
 
 Ordering rationale: foundation first, then security/profiles (everything else is per-profile data, so isolation has to exist before there's data to isolate), then the wardrobe core (the app's baseline value), then progressively higher-risk/higher-complexity features, with Virtual Try-On — the largest native/CV surface — deliberately late so the core data model is proven before the riskiest work starts. Backup depends on the full data model existing, so it comes after. Hardening and release close it out.
 
 Phase numbers are stable identifiers for planning/tracking, not calendar weeks. Cross-reference FR-numbers point back to [`Digital_Wardroad.md`](../Digital_Wardroad.md).
+
+**Consolidated from an earlier 12-phase draft** (see git history for the original Phase 0–11 breakdown): three pairs of adjacent, tightly-coupled, small phases were merged — Outfits+Favorites, Planner+Statistics, and Settings&Polish+Hardening&Release — since each pair shared a dependency chain and neither half had independent shippable value without the other. One phase (Background Removal) stayed standalone despite being small, because it's a native-model spike with genuine open risk that's easier to timebox in isolation. Dependency ordering is unchanged; only numbering and grouping shifted.
 
 ## Phase 0 — Foundation
 
@@ -48,73 +50,64 @@ Phase numbers are stable identifiers for planning/tracking, not calendar weeks. 
 - **3.2** Native garment-matting module (Kotlin, TFLite interpreter) wired via TurboModule.
 - **3.3** Background Removal Review screen (before/after toggle, retry), inserted into the add-item flow between crop and metadata (FR-7).
 
-## Phase 4 — Outfits
+## Phase 4 — Outfits & Favorites
 
 - **4.1** Outfit Builder: category slots + item picker (single item per relevant category).
 - **4.2** Save/name an outfit.
 - **4.3** Outfit Detail view.
 - **4.4** Outfit edit.
 - **4.5** Outfit delete, with planner-impact confirmation when planner entries reference it (FR-13).
+- **4.6** Favorite/unfavorite toggle on item detail and outfit detail.
+- **4.7** Favorites screen (Items / Outfits tabs), filtered query only — no new table.
 
-## Phase 5 — Favorites
+## Phase 5 — Planner & Statistics
 
-- **5.1** Favorite/unfavorite toggle on item detail and outfit detail.
-- **5.2** Favorites screen (Items / Outfits tabs), filtered query only — no new table.
+- **5.1** Calendar view (month/day states, no entries yet).
+- **5.2** Create planner entry: assign an outfit OR a single item to a date (never both — FR-15 CHECK constraint).
+- **5.3** Planner Entry Detail view.
+- **5.4** Edit/remove a planner entry.
+- **5.5** Mark entry "worn" → writes `wear_log` row(s) (FR-17).
+- **5.6** Un-mark "worn" back to "planned" → deletes the corresponding `wear_log` row(s), keeping Statistics consistent.
+- **5.7** Wear-count aggregate query per item.
+- **5.8** Most-worn / least-worn / never-worn (unworn) views.
+- **5.9** Category breakdown (item count + wear count by category).
+- **5.10** Statistics Dashboard screen wiring all of the above (FR-21, read-only derived views only — no stats table).
 
-## Phase 6 — Planner
-
-- **6.1** Calendar view (month/day states, no entries yet).
-- **6.2** Create planner entry: assign an outfit OR a single item to a date (never both — FR-15 CHECK constraint).
-- **6.3** Planner Entry Detail view.
-- **6.4** Edit/remove a planner entry.
-- **6.5** Mark entry "worn" → writes `wear_log` row(s) (FR-17).
-- **6.6** Un-mark "worn" back to "planned" → deletes the corresponding `wear_log` row(s), keeping Statistics consistent.
-
-## Phase 7 — Statistics
-
-- **7.1** Wear-count aggregate query per item.
-- **7.2** Most-worn / least-worn / never-worn (unworn) views.
-- **7.3** Category breakdown (item count + wear count by category).
-- **7.4** Statistics Dashboard screen wiring all of the above (FR-21, read-only derived views only — no stats table).
-
-## Phase 8 — Virtual Try-On
+## Phase 6 — Virtual Try-On
 
 The largest native/CV surface in the app; deliberately sequenced after the core data model (wardrobe, outfits) is stable and tested.
 
-- **8.1** Profile Body Photo capture screen (one per profile, retakeable).
-- **8.2** Native pose-detection module (MediaPipe Pose), landmark output cached to `body_photo.pose_landmarks_json`.
-- **8.3** Native person-segmentation module (MediaPipe Selfie Segmentation).
-- **8.4** Native compositing module (OpenCV): warp + alpha-blend a single garment onto a segmented photo using landmark anchors.
-- **8.5** Try-On Canvas: render auto-placed single item end-to-end.
-- **8.6** Extend compositing to a full saved outfit (multiple layered garments, `layer_order`).
-- **8.7** Manual reposition/scale/rotate gestures per layer (Reanimated + Gesture Handler), pre-save.
-- **8.8** Save or discard the final composited preview image.
-- **8.9** Wire "Try On" entry point directly from Outfit Detail (FR-14).
+- **6.1** Profile Body Photo capture screen (one per profile, retakeable).
+- **6.2** Native pose-detection module (MediaPipe Pose), landmark output cached to `body_photo.pose_landmarks_json`.
+- **6.3** Native person-segmentation module (MediaPipe Selfie Segmentation).
+- **6.4** Native compositing module (OpenCV): warp + alpha-blend a single garment onto a segmented photo using landmark anchors.
+- **6.5** Try-On Canvas: render auto-placed single item end-to-end.
+- **6.6** Extend compositing to a full saved outfit (multiple layered garments, `layer_order`).
+- **6.7** Manual reposition/scale/rotate gestures per layer (Reanimated + Gesture Handler), pre-save.
+- **6.8** Save or discard the final composited preview image.
+- **6.9** Wire "Try On" entry point directly from Outfit Detail (FR-14).
 
-## Phase 9 — Backup & Restore
+## Phase 7 — Backup & Restore
 
-- **9.1** Native backup module: bundle a profile's SQLite DB + image directory into a zip with a manifest (app version, schema version, checksum).
-- **9.2** Encrypt archive by default via Google Tink, passphrase set at export time (FR-29a/NFR-9).
-- **9.3** Export flow UI: profile-scope selection, passphrase entry, SAF/share-sheet destination picker.
-- **9.4** Restore flow: passphrase validation before reading contents, manifest/schema-version/checksum validation.
-- **9.5** Restore import: transactional DB row import + image file copy, all-or-nothing on any validation failure; overwrite-existing-profile vs. restore-as-new-profile paths.
+- **7.1** Native backup module: bundle a profile's SQLite DB + image directory into a zip with a manifest (app version, schema version, checksum).
+- **7.2** Encrypt archive by default via Google Tink, passphrase set at export time (FR-29a/NFR-9).
+- **7.3** Export flow UI: profile-scope selection, passphrase entry, SAF/share-sheet destination picker.
+- **7.4** Restore flow: passphrase validation before reading contents, manifest/schema-version/checksum validation.
+- **7.5** Restore import: transactional DB row import + image file copy, all-or-nothing on any validation failure; overwrite-existing-profile vs. restore-as-new-profile paths.
 
-## Phase 10 — Settings & Polish
+## Phase 8 — Hardening, Polish & Release
 
-- **10.1** Dark Mode toggle (System/Light/Dark) — real implementation, replacing the Phase 0 stub.
-- **10.2** Biometric timeout setting.
-- **10.3** Accessibility pass: `accessibilityLabel`s, 48dp touch targets, TalkBack verification across all screens.
-- **10.4** Both-orientation layout pass, prioritizing camera/crop/try-on screens.
-- **10.5** Local-only structured logging + manual log export via SAF (no third-party crash/analytics SDK).
-
-## Phase 11 — Hardening & Release
-
-- **11.1** Profile-isolation integration test (no query/file path can cross profile boundaries).
-- **11.2** Cross-schema-version backup/restore test (older manifest into a newer app build).
-- **11.3** OOM/resource-exhaustion test path for the CV pipelines, on a low-end-of-flagship reference device.
-- **11.4** Detox E2E suite for the critical path: create profile → add item → build outfit → try on → plan → statistics update.
-- **11.5** Performance pass: cold start (<2s, NFR-2), warm try-on latency (<3s, NFR-3), first-run model-load ceiling (NFR-3a).
-- **11.6** Release prep: signed AAB via CI, Play Console Data Safety form ("no data collected"), versioning bump, release checklist (§43).
+- **8.1** Dark Mode toggle (System/Light/Dark) — real implementation, replacing the Phase 0 stub.
+- **8.2** Biometric timeout setting.
+- **8.3** Accessibility pass: `accessibilityLabel`s, 48dp touch targets, TalkBack verification across all screens.
+- **8.4** Both-orientation layout pass, prioritizing camera/crop/try-on screens.
+- **8.5** Local-only structured logging + manual log export via SAF (no third-party crash/analytics SDK).
+- **8.6** Profile-isolation integration test (no query/file path can cross profile boundaries).
+- **8.7** Cross-schema-version backup/restore test (older manifest into a newer app build).
+- **8.8** OOM/resource-exhaustion test path for the CV pipelines, on a low-end-of-flagship reference device.
+- **8.9** Detox E2E suite for the critical path: create profile → add item → build outfit → try on → plan → statistics update.
+- **8.10** Performance pass: cold start (<2s, NFR-2), warm try-on latency (<3s, NFR-3), first-run model-load ceiling (NFR-3a).
+- **8.11** Release prep: signed AAB via CI, Play Console Data Safety form ("no data collected"), versioning bump, release checklist (§43).
 
 ## Explicitly Deferred (not in this roadmap)
 
