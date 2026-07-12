@@ -18,12 +18,19 @@ the interfaces defined in `../domain/`.
 
 - `profileRepository.ts` — `LocalProfileRepository`, implementing the
   Domain's `ProfileRepository` port against the `app_meta` MMKV registry
-  (`shared/storage`) plus `profileStorageProvisioning.ts` (Task Group 3).
-  `create()` provisions storage before writing the registry entry, so a
-  failure never leaves an entry pointing at nonexistent storage.
+  (`shared/storage`) plus `profileStorageProvisioning.ts` (Task Group 3/4).
+  `create()` provisions storage before writing the registry entry, and
+  `remove()` deprovisions storage before removing it — both so a failure
+  never leaves a registry entry pointing at storage that doesn't match its
+  state. `remove()` also clears `activeProfileId` if it pointed at the
+  deleted profile. The constructor's `dbLocation`/`imageBaseDir` params
+  exist purely for tests (real disk I/O against a temp dir, mirroring
+  `profileStorageProvisioning.ts`'s own override params) — production
+  code always uses `new LocalProfileRepository()` with both omitted.
 
-Edit/Delete Profile and PIN handling (Task Group 4/5, see
-`specs/roadmap.md`) still need to land here.
+PIN handling (Task Group 5, see `specs/roadmap.md`) still needs to land
+here — including extending `remove()`'s cascading delete to also clear a
+profile's PIN hash once that storage exists.
 
 Tested with Jest — unit tests for repository logic, integration tests against
 an in-memory/temp SQLite instance (`tech-stack.md`).

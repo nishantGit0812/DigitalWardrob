@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import {
   Button,
   HelperText,
@@ -9,21 +9,8 @@ import {
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Profile } from '../domain/Profile';
+import { AVATAR_COLORS, AvatarColorPicker } from './AvatarColorPicker';
 import { useProfileRepository } from './ProfileRepositoryContext';
-
-// No avatar color palette is specified in spec.md beyond "name and
-// avatar/color" (FR-1) — this fixed set of 8 distinguishable, WCAG-friendly
-// accents is a Phase 1 UI decision, not a stakeholder-locked one.
-const AVATAR_COLORS = [
-  '#E57373',
-  '#F06292',
-  '#BA68C8',
-  '#7986CB',
-  '#4FC3F7',
-  '#4DB6AC',
-  '#81C784',
-  '#FFB74D',
-];
 
 interface CreateProfileScreenProps {
   onCreated: (profile: Profile) => void;
@@ -84,28 +71,10 @@ export function CreateProfileScreen({ onCreated }: CreateProfileScreenProps) {
       />
 
       <Text variant="bodyMedium">Choose a color</Text>
-      <View style={styles.colorRow}>
-        {AVATAR_COLORS.map(color => {
-          const selected = color === avatarColor;
-          return (
-            <Pressable
-              key={color}
-              onPress={() => setAvatarColor(color)}
-              accessibilityRole="button"
-              accessibilityLabel={`Avatar color ${color}`}
-              accessibilityState={{ selected }}
-              style={[
-                styles.swatch,
-                { backgroundColor: color },
-                selected && [
-                  styles.swatchSelected,
-                  { borderColor: theme.colors.onBackground },
-                ],
-              ]}
-            />
-          );
-        })}
-      </View>
+      <AvatarColorPicker
+        selectedColor={avatarColor}
+        onSelect={setAvatarColor}
+      />
 
       {error && (
         <HelperText type="error" visible>
@@ -131,19 +100,5 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     gap: 16,
-  },
-  colorRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  // 48dp minimum touch target (mission.md non-negotiable #4).
-  swatch: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  swatchSelected: {
-    borderWidth: 3,
   },
 });

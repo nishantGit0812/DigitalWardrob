@@ -22,6 +22,8 @@ function fakeRepository(
   return {
     list: jest.fn().mockResolvedValue([]),
     create: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
     getActiveProfileId: jest.fn(),
     setActiveProfileId: jest.fn(),
     ...overrides,

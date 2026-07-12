@@ -1,4 +1,7 @@
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { Button } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { Metrics } from 'react-native-safe-area-context';
 import type { Profile } from '../../domain/Profile';
@@ -17,26 +20,72 @@ function fakeRepository(
   return {
     list: jest.fn().mockResolvedValue([]),
     create: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
     getActiveProfileId: jest.fn(),
     setActiveProfileId: jest.fn(),
     ...overrides,
   };
 }
 
+// useFocusEffect (used to refresh the list on refocus, e.g. after Edit
+// Profile) needs a real navigator ancestor, not just NavigationContainer —
+// a two-screen stack lets tests drive an actual focus/blur/refocus cycle.
+const TestStack = createNativeStackNavigator();
+
 async function renderScreen(repository: ProfileRepository) {
+  const onProfileSelected = jest.fn();
+  const onAddProfile = jest.fn();
+  const onEditProfile = jest.fn();
+  await render(
+    <SafeAreaProvider initialMetrics={TEST_METRICS}>
+      <ProfileRepositoryProvider repository={repository}>
+        <NavigationContainer>
+          <TestStack.Navigator screenOptions={{ headerShown: false }}>
+            <TestStack.Screen name="ProfileSelection">
+              {() => (
+                <ProfileSelectionScreen
+                  onProfileSelected={onProfileSelected}
+                  onAddProfile={onAddProfile}
+                  onEditProfile={onEditProfile}
+                />
+              )}
+            </TestStack.Screen>
+          </TestStack.Navigator>
+        </NavigationContainer>
+      </ProfileRepositoryProvider>
+    </SafeAreaProvider>,
+  );
+  return { onProfileSelected, onAddProfile, onEditProfile };
+}
+
+async function renderScreenWithBackNavigation(repository: ProfileRepository) {
   const onProfileSelected = jest.fn();
   const onAddProfile = jest.fn();
   await render(
     <SafeAreaProvider initialMetrics={TEST_METRICS}>
       <ProfileRepositoryProvider repository={repository}>
-        <ProfileSelectionScreen
-          onProfileSelected={onProfileSelected}
-          onAddProfile={onAddProfile}
-        />
+        <NavigationContainer>
+          <TestStack.Navigator screenOptions={{ headerShown: false }}>
+            <TestStack.Screen name="ProfileSelection">
+              {({ navigation }) => (
+                <ProfileSelectionScreen
+                  onProfileSelected={onProfileSelected}
+                  onAddProfile={onAddProfile}
+                  onEditProfile={() => navigation.navigate('Other')}
+                />
+              )}
+            </TestStack.Screen>
+            <TestStack.Screen name="Other">
+              {({ navigation }) => (
+                <Button onPress={() => navigation.goBack()}>Back</Button>
+              )}
+            </TestStack.Screen>
+          </TestStack.Navigator>
+        </NavigationContainer>
       </ProfileRepositoryProvider>
     </SafeAreaProvider>,
   );
-  return { onProfileSelected, onAddProfile };
 }
 
 const profileA: Profile = { id: 'a', name: 'Priya', avatarColor: '#E57373' };
@@ -104,5 +153,39 @@ describe('ProfileSelectionScreen', () => {
     );
 
     expect(onAddProfile).toHaveBeenCalled();
+  });
+
+  it('pressing Edit on a tile calls onEditProfile with that profile', async () => {
+    const repository = fakeRepository({
+      list: jest.fn().mockResolvedValue([profileA]),
+    });
+
+    const { onEditProfile } = await renderScreen(repository);
+
+    await fireEvent.press(
+      await screen.findByRole('button', { name: "Edit Priya's profile" }),
+    );
+
+    expect(onEditProfile).toHaveBeenCalledWith(profileA);
+  });
+
+  it('re-fetches the profile list when the screen regains focus', async () => {
+    const list = jest
+      .fn()
+      .mockResolvedValueOnce([profileA])
+      .mockResolvedValueOnce([profileA, profileB]);
+    const repository = fakeRepository({ list });
+
+    await renderScreenWithBackNavigation(repository);
+    expect(await screen.findByText('Priya')).toBeOnTheScreen();
+    expect(list).toHaveBeenCalledTimes(1);
+
+    await fireEvent.press(
+      await screen.findByRole('button', { name: "Edit Priya's profile" }),
+    );
+    await fireEvent.press(await screen.findByRole('button', { name: 'Back' }));
+
+    expect(await screen.findByText('Devraj')).toBeOnTheScreen();
+    expect(list).toHaveBeenCalledTimes(2);
   });
 });

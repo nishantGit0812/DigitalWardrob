@@ -34,6 +34,12 @@ export function setActiveProfileId(profileId: string): void {
   appMetaStorage.set(ACTIVE_PROFILE_ID_KEY, profileId);
 }
 
+// Task Group 4.3: deleting the currently-active profile must not leave a
+// stale pointer at a profile whose storage no longer exists.
+export function clearActiveProfileId(): void {
+  appMetaStorage.remove(ACTIVE_PROFILE_ID_KEY);
+}
+
 export function getThemeMode(): ThemeMode {
   const value = appMetaStorage.getString(THEME_MODE_KEY);
   return value === 'light' || value === 'dark' ? value : 'system';

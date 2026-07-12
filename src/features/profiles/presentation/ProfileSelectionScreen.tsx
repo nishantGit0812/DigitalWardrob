@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +12,7 @@ import { ProfileTile } from './ProfileTile';
 interface ProfileSelectionScreenProps {
   onProfileSelected: (profile: Profile) => void;
   onAddProfile: () => void;
+  onEditProfile: (profile: Profile) => void;
 }
 
 // Grid of up to MAX_PROFILES profile tiles plus an Add Profile action
@@ -23,23 +25,30 @@ interface ProfileSelectionScreenProps {
 export function ProfileSelectionScreen({
   onProfileSelected,
   onAddProfile,
+  onEditProfile,
 }: ProfileSelectionScreenProps) {
   const repository = useProfileRepository();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const [profiles, setProfiles] = useState<Profile[] | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    repository.list().then(result => {
-      if (!cancelled) {
-        setProfiles(result);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [repository]);
+  // Refetches on every focus, not just mount, so returning from
+  // Create/Edit Profile (Task Group 4.1) shows the change — React
+  // Navigation keeps this screen mounted-but-unfocused rather than
+  // remounting it on `goBack()`.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      repository.list().then(result => {
+        if (!cancelled) {
+          setProfiles(result);
+        }
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [repository]),
+  );
 
   const handleSelect = useCallback(
     (profile: Profile) => {
@@ -77,6 +86,7 @@ export function ProfileSelectionScreen({
             key={profile.id}
             profile={profile}
             onPress={() => handleSelect(profile)}
+            onEdit={() => onEditProfile(profile)}
           />
         ))}
         <AddProfileTile

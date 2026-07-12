@@ -1,4 +1,5 @@
 import {
+  clearActiveProfileId,
   getActiveProfileId as getStoredActiveProfileId,
   getProfileRegistry,
   setActiveProfileId as setStoredActiveProfileId,
@@ -10,7 +11,10 @@ import {
   MAX_PROFILES,
   type ProfileRepository,
 } from '../domain/profileRepository';
-import { provisionProfileStorage } from './profileStorageProvisioning';
+import {
+  deprovisionProfileStorage,
+  provisionProfileStorage,
+} from './profileStorageProvisioning';
 
 function toProfile(entry: ProfileRegistryEntry): Profile {
   return { id: entry.id, name: entry.name, avatarColor: entry.avatarColor };
@@ -28,8 +32,14 @@ function generateProfileId(): string {
 // Implements the profiles/domain ProfileRepository port against the
 // app_meta MMKV registry (spec.md §17) plus Task Group 2's storage
 // provisioning — the only place in the app that writes profile registry
-// entries.
+// entries. `dbLocation`/`imageBaseDir` mirror provisionProfileStorage's own
+// override params — left undefined in production, overridden in tests.
 export class LocalProfileRepository implements ProfileRepository {
+  constructor(
+    private readonly dbLocation?: string,
+    private readonly imageBaseDir?: string,
+  ) {}
+
   async list(): Promise<Profile[]> {
     return getProfileRegistry()
       .slice()
@@ -61,10 +71,63 @@ export class LocalProfileRepository implements ProfileRepository {
     // write never happens) is the safer failure direction — an orphaned
     // directory is inert, whereas a registry entry pointing at missing
     // storage would break on the next read.
-    await provisionProfileStorage(entry.id);
+    await provisionProfileStorage(entry.id, this.dbLocation, this.imageBaseDir);
     setProfileRegistry([...registry, entry]);
 
     return toProfile(entry);
+  }
+
+  async update(
+    profileId: string,
+    name: string,
+    avatarColor: string,
+  ): Promise<Profile> {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      throw new Error('Profile name is required.');
+    }
+
+    const registry = getProfileRegistry();
+    const index = registry.findIndex(entry => entry.id === profileId);
+    if (index === -1) {
+      throw new Error(`Profile ${profileId} does not exist.`);
+    }
+
+    const updated: ProfileRegistryEntry = {
+      ...registry[index],
+      name: trimmedName,
+      avatarColor,
+    };
+    const nextRegistry = [...registry];
+    nextRegistry[index] = updated;
+    setProfileRegistry(nextRegistry);
+
+    return toProfile(updated);
+  }
+
+  async remove(profileId: string): Promise<void> {
+    const registry = getProfileRegistry();
+    if (!registry.some(entry => entry.id === profileId)) {
+      return;
+    }
+
+    // Task Group 4.3: cascading storage removal (Task Group 2.3) before the
+    // registry entry — mirrors create()'s ordering. deprovisionProfileStorage
+    // tolerates already-missing storage, so a retried delete after a partial
+    // failure is always safe to call again.
+    //
+    // PIN hash removal (Task Group 5) will need to extend this once PIN
+    // storage exists — a no-op today since no PIN system has landed yet.
+    await deprovisionProfileStorage(
+      profileId,
+      this.dbLocation,
+      this.imageBaseDir,
+    );
+    setProfileRegistry(registry.filter(entry => entry.id !== profileId));
+
+    if (getStoredActiveProfileId() === profileId) {
+      clearActiveProfileId();
+    }
   }
 
   getActiveProfileId(): string | undefined {

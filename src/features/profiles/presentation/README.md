@@ -21,9 +21,20 @@ only import from `../domain/`, never `../data/` directly (enforced by
   `AddProfileTile` is the first consumer of `app/theme/disabledState.ts`'s
   disabled-state token (Task Group 6), since it's a custom control rather
   than a Paper `Button` (which already handles MD3 disabled styling itself).
+  `ProfileTile` also renders the Edit affordance (Task Group 4.1) as a
+  separate labeled control rather than a tap-vs-long-press ambiguity on the
+  tile itself.
+- `AvatarColorPicker.tsx` — the swatch row, extracted so CreateProfileScreen
+  and `EditProfileScreen.tsx` share one implementation (spec.md's screen
+  inventory treats "Create/Edit Profile" as one screen concept).
+- `EditProfileScreen.tsx` — rename/re-avatar (Task Group 4.1) and the
+  destructive delete flow (Task Group 4.2/4.3), confirmed via `Alert.alert`
+  with explicit "cannot be undone" copy before calling
+  `LocalProfileRepository.remove`.
 
-Edit/Delete Profile and PIN handling (Task Group 4/5, see
-`specs/roadmap.md`) still need to land here.
+PIN handling (Task Group 5, see `specs/roadmap.md`) still needs to land
+here — including extending `remove()`'s cascading delete to also clear a
+profile's PIN hash once that storage exists.
 
 Component tests here must use React Native Testing Library (`tech-stack.md`),
 not bare `react-test-renderer`.

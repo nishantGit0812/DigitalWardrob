@@ -1,5 +1,6 @@
 import { appMetaStorage } from '../mmkv';
 import {
+  clearActiveProfileId,
   getActiveProfileId,
   getOnboardingComplete,
   getProfileRegistry,
@@ -51,6 +52,12 @@ describe('active profile id', () => {
   it('round-trips synchronously', () => {
     setActiveProfileId('p1');
     expect(getActiveProfileId()).toBe('p1');
+  });
+
+  it('clears back to undefined', () => {
+    setActiveProfileId('p1');
+    clearActiveProfileId();
+    expect(getActiveProfileId()).toBeUndefined();
   });
 });
 
