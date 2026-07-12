@@ -41,7 +41,7 @@ Numbered task groups, each independently verifiable. Sequenced so later groups d
 ## Task Group 6 — MD3 Theming (roadmap 0.6)
 
 6.1. Integrate React Native Paper, define light/dark MD3 token sets.
-6.2. Add a dark-mode toggle in a placeholder Settings screen, wired to a **no-op** setting (real persistence lands in roadmap 10.1) — must not silently become a real implementation; keep it visibly a stub per the roadmap's own phase boundary.
+6.2. Add a dark-mode toggle in a placeholder Settings screen, wired to a **no-op** setting (real persistence lands in roadmap 8.1) — must not silently become a real implementation; keep it visibly a stub per the roadmap's own phase boundary.
 6.3. Manually verify contrast-compliant rendering in both light and dark mode (mission.md accessibility principle applies even to placeholder screens).
 
 ## Sequencing Notes

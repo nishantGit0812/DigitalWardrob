@@ -15,7 +15,7 @@ const ThemeModeContext = createContext<ThemeModeContextValue | undefined>(
 
 // Phase 0 stub per plan.md 6.2 — in-memory only, resets on relaunch. Lets
 // the Settings toggle drive Paper's theme for manual light/dark QA (6.3)
-// without wiring real persistence, which is roadmap 10.1's job.
+// without wiring real persistence, which is roadmap 8.1's job.
 export function ThemeModeProvider({ children }: PropsWithChildren) {
   const systemScheme = useColorScheme();
   const [mode, setMode] = useState<ThemeMode>(

@@ -17,7 +17,7 @@ Out of scope (deferred to later phases per roadmap):
 
 - Any actual profile creation/security logic (Phase 1).
 - Any wardrobe data, camera, or item CRUD (Phase 2+).
-- Real dark-mode persistence/behavior beyond a no-op toggle (real implementation is roadmap 10.1).
+- Real dark-mode persistence/behavior beyond a no-op toggle (real implementation is roadmap 8.1).
 - Native modules beyond what op-sqlite/MMKV require out of the box (pose/segmentation/matting/compositing/backup/biometric native modules all come in later phases).
 
 ## Decisions

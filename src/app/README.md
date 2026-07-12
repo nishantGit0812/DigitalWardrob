@@ -9,7 +9,7 @@ Navigation root, providers, and theming for the app shell, per `docs/spec.md`
   tabs (`screens/`) is a placeholder pending its real Phase 2+ implementation.
 - `theme/` — MD3 light/dark tokens via React Native Paper (Task Group 6).
   `ThemeModeContext` holds the active mode in memory only (no-op per
-  plan.md 6.2 — real persistence is roadmap 10.1); Settings' dark-mode
+  plan.md 6.2 — real persistence is roadmap 8.1); Settings' dark-mode
   switch drives it for manual light/dark contrast verification.
 - `store/` — not created yet. Redux Toolkit + Redux Persist (tech-stack.md,
   requirements.md's carried-over decisions) has no task group in Phase 0's
