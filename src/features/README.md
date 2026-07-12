@@ -16,5 +16,9 @@ These boundaries are enforced by the ESLint rules in `.eslintrc.js`
 (`no-restricted-imports` for the domain layer, `import/no-restricted-paths`
 for the presentation layer), not just convention.
 
+Testing per `tech-stack.md`: Jest for `domain`/`data` unit and integration
+tests; **`presentation` component tests must use React Native Testing
+Library**, querying by role/text/label rather than internals.
+
 `profiles/` is currently a placeholder establishing this structure ahead of
 its real implementation in Phase 1 (see `specs/roadmap.md`).

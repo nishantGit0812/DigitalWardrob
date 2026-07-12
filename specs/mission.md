@@ -1,6 +1,6 @@
 # Mission
 
-Source of truth for *why* this product exists and *what* it must (and must not) do. Derived from stakeholder input in [`Digital_Wardroad.md`](../Digital_Wardroad.md) (spec v1.2.0-draft). If this file and the spec ever disagree, treat that as a signal to reconcile them, not to silently pick one.
+Source of truth for *why* this product exists and *what* it must (and must not) do. Derived from stakeholder input in [`docs/spec.md`](../docs/spec.md) (spec v1.2.0-draft). If this file and the spec ever disagree, treat that as a signal to reconcile them, not to silently pick one.
 
 ## Product Vision
 

@@ -4,7 +4,7 @@ High-level implementation order for WardrobeAI, broken into small phases. Each p
 
 Ordering rationale: foundation first, then security/profiles (everything else is per-profile data, so isolation has to exist before there's data to isolate), then the wardrobe core (the app's baseline value), then progressively higher-risk/higher-complexity features, with Virtual Try-On — the largest native/CV surface — deliberately late so the core data model is proven before the riskiest work starts. Backup depends on the full data model existing, so it comes after. Hardening and release close it out.
 
-Phase numbers are stable identifiers for planning/tracking, not calendar weeks. Cross-reference FR-numbers point back to [`Digital_Wardroad.md`](../Digital_Wardroad.md).
+Phase numbers are stable identifiers for planning/tracking, not calendar weeks. Cross-reference FR-numbers point back to [`docs/spec.md`](../docs/spec.md).
 
 ## Phase 0 — Foundation
 
