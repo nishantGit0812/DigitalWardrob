@@ -1,6 +1,7 @@
 node_modules/
 android/build/
 android/app/build/
+android/app/.cxx/
 android/.gradle/
 coverage/
 *.md
