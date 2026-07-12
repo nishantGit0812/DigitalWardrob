@@ -4,9 +4,10 @@ Navigation root, providers, and theming for the app shell, per `docs/spec.md`
 §17.
 
 - `navigation/` — root stack + bottom-tab setup (Task Group 5). `RootNavigator`
-  is a single-screen stack wrapping `MainTabs` for now; Phase 1 adds the
-  biometric gate and profile-selection screens ahead of it. Each of the 5
-  tabs (`screens/`) is a placeholder pending its real Phase 2+ implementation.
+  now gates `MainTabs` behind `BiometricGateScreen` (Phase 1 Task Group 1);
+  profile-selection will sit between them once Task Group 3 lands. Each of
+  the 5 tabs (`screens/`) is a placeholder pending its real Phase 2+
+  implementation.
 - `theme/` — MD3 light/dark tokens via React Native Paper (Task Group 6).
   `ThemeModeContext` holds the active mode in memory only (no-op per
   plan.md 6.2 — real persistence is roadmap 8.1); Settings' dark-mode

@@ -116,4 +116,8 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    // Backs nativemodules/biometric (Task Group 1) — BIOMETRIC_WEAK |
+    // DEVICE_CREDENTIAL support requires 1.1.0+.
+    implementation("androidx.biometric:biometric:1.1.0")
 }

@@ -15,6 +15,12 @@ import {
   lightTheme,
   useThemeMode,
 } from './src/app/theme';
+import { NativeBiometricGateway } from './src/features/profiles/data/biometricGateway';
+import { BiometricGateProvider } from './src/features/profiles/presentation/BiometricGateContext';
+
+// Composition root: the only place the concrete Data-layer gateway is
+// imported and handed to Presentation via context (spec.md §18a).
+const biometricGateway = new NativeBiometricGateway();
 
 function ThemedApp() {
   const { mode } = useThemeMode();
@@ -35,9 +41,11 @@ function ThemedApp() {
 function App() {
   return (
     <SafeAreaProvider>
-      <ThemeModeProvider>
-        <ThemedApp />
-      </ThemeModeProvider>
+      <BiometricGateProvider gateway={biometricGateway}>
+        <ThemeModeProvider>
+          <ThemedApp />
+        </ThemeModeProvider>
+      </BiometricGateProvider>
     </SafeAreaProvider>
   );
 }
