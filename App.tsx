@@ -7,14 +7,7 @@ import { StatusBar } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/app/navigation/RootNavigator';
-import {
-  ThemeModeProvider,
-  darkNavigationTheme,
-  darkTheme,
-  lightNavigationTheme,
-  lightTheme,
-  useThemeMode,
-} from './src/app/theme';
+import { ThemeModeProvider, useAppTheme } from './src/app/theme';
 import { NativeBiometricGateway } from './src/features/profiles/data/biometricGateway';
 import { LocalProfileRepository } from './src/features/profiles/data/profileRepository';
 import { NativeProfilePinGateway } from './src/features/profiles/data/profilePinGateway';
@@ -29,15 +22,12 @@ const profilePinGateway = new NativeProfilePinGateway();
 const profileRepository = new LocalProfileRepository(profilePinGateway);
 
 function ThemedApp() {
-  const { mode } = useThemeMode();
-  const isDark = mode === 'dark';
+  const { isDark, paperTheme, navigationTheme } = useAppTheme();
 
   return (
-    <PaperProvider theme={isDark ? darkTheme : lightTheme}>
+    <PaperProvider theme={paperTheme}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <NavigationContainer
-        theme={isDark ? darkNavigationTheme : lightNavigationTheme}
-      >
+      <NavigationContainer theme={navigationTheme}>
         <RootNavigator />
       </NavigationContainer>
     </PaperProvider>
