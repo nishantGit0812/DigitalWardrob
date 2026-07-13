@@ -19,6 +19,10 @@ module.exports = {
       '<rootDir>/src/features/profiles/data/native/__mocks__/NativeBiometricGate.ts',
     'native/NativeProfilePin$':
       '<rootDir>/src/features/profiles/data/native/__mocks__/NativeProfilePin.ts',
+    // Jest never runs files through Metro, so react-native-svg-transformer
+    // (metro.config.js) never sees `.svg` imports under test — redirect them
+    // to a plain mock component instead.
+    '\\.svg$': '<rootDir>/__mocks__/svgMock.js',
   },
   // react-native-reanimated/react-native-worklets ship ESM-only source
   // (no commonjs build) and must go through Babel like the app's own code.
