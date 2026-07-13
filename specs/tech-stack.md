@@ -1,8 +1,8 @@
 # Tech Stack
 
-Technology decisions for WardrobeAI, as finalized in [`docs/spec.md`](../docs/spec.md) (spec v1.3.1-draft, §8, §20–§22, §28a, §40). These are treated as locked for v1 unless a decision here is explicitly revisited — the spec's changelog shows prior "to be confirmed" items were deliberately closed out before freeze, so don't reopen them without cause.
+Technology decisions for WardrobeAI, as finalized in [`docs/spec.md`](../docs/spec.md) (spec v1.4.0-draft, §8, §20–§22, §28a, §40, §44–§63). These are treated as locked for v1 unless a decision here is explicitly revisited — the spec's changelog shows prior "to be confirmed" items were deliberately closed out before freeze, so don't reopen them without cause.
 
-Phase 0 (already shipped — see [`roadmap.md`](roadmap.md)) predates the sections below marked "since §28a"; nothing here changes what Phase 0 already built, only what Phase 1 onward should build on top of it.
+Phase 0 and Phase 1 (both already shipped — see [`roadmap.md`](roadmap.md)) predate the sections below marked "since §44"; nothing here changes what they already built, only what Phase 2 onward should build on top of them. One exception: Phase 1's theme files (`paperTheme.ts`, `disabledState.ts`, `textContrast.ts`) predate §58's now-locked theme file structure and are refactored — not rewritten from scratch — as the first item of Phase 2 (see "Design Tokens & Theming" below).
 
 ## Platform & Target
 
@@ -32,6 +32,7 @@ Phase 0 (already shipped — see [`roadmap.md`](roadmap.md)) predates the sectio
 | Key-value storage | MMKV (active profile id, theme mode, onboarding flag — chosen over AsyncStorage for synchronous hot-path reads) |
 | Filesystem access | `@dr.pogodin/react-native-fs` (per-profile image directory create/delete, Task Group 2; general file I/O for Phase 2+ wardrobe photos) — a maintained fork of the original `react-native-fs`, with full New Architecture/TurboModule support (this project's `newArchEnabled=true`). No filesystem library was chosen in Phase 0; this fills that gap as of Task Group 2. |
 | Biometric bridge (JS side) | AndroidX Biometric, via native bridge |
+| Sound playback (since §52, optional/off-by-default UI sounds) | **Not yet finalized.** Needs a New Architecture/TurboModule-compatible RN audio-playback package (this project runs `newArchEnabled=true`, the same bar `@dr.pogodin/react-native-fs` was chosen against) — candidates to evaluate include `react-native-sound` (mature but unconfirmed New Arch support) and any Nitro-modules-based alternative. Camera shutter sound is *not* part of this decision — it uses the OS `MediaActionSound.SHUTTER_CLICK` system sound directly (some regions mandate an unsilenceable shutter sound; letting the OS own it handles that automatically). To be confirmed as part of Phase 2's sound-effects hook (roadmap 2.14). |
 
 **Explicitly not used:** RTK Query (no network layer to justify it — repository calls are async thunks into the Data layer).
 
@@ -48,6 +49,8 @@ Phase 0 (already shipped — see [`roadmap.md`](roadmap.md)) predates the sectio
 | Compositing | OpenCV Android (via JNI) — affine/perspective warp + alpha blend, anchored to pose landmarks |
 | Backup encryption | Google Tink (Android) — authenticated encryption, passphrase-derived key |
 | Biometric (native) | AndroidX Biometric |
+| Haptics (native, since §51) | Android `VibrationEffect`/`HapticFeedbackConstants` composition primitives (API 31+, available on every target device — no legacy `vibrate(ms)` fallback needed). Small native module exposing named effects (tick/click/double-click/heavy-click) rather than raw durations, bridged through a single `useHaptic()` JS hook so the spec's one global on/off toggle (§51) has one enforcement point. |
+| Foldable hinge detection (native, since §53.4) | Jetpack WindowManager (`androidx.window:window`) — reads `FoldingFeature` geometry so a Dialog/Bottom Sheet can avoid straddling a book-mode hinge. New dependency introduced by the responsive-layout spec, not present in the original Phase 0 stack. |
 
 All models ship bundled in the APK/AAB — nothing is downloaded post-install (required for the fully-offline guarantee).
 
@@ -73,13 +76,39 @@ Presentation → Domain → Data → Native
 
 Full rule set: spec §18a.
 
-## Accessibility & UX Patterns (since §28a)
+## Design Tokens & Theming (since §44, §58)
 
-No new libraries — these are usage patterns on top of dependencies already listed above, required starting with whichever Phase 1+ feature first introduces the relevant UI (see `roadmap.md`):
+No new libraries — this is a file-structure and token-naming discipline layered on top of React Native Paper (already in the App Layer table above). Built once in Phase 2 (roadmap 2.1–2.3), consumed by every phase after:
 
-- **Reduced motion**: every non-gesture animation (toggles, screen transitions, the planner "Worn" microinteraction) must branch on React Native's `AccessibilityInfo.isReduceMotionEnabled()` / `reduceMotionChanged` event — which reflects Android's system "Remove animations" setting — and skip straight to the end state when it's on. Gesture-driven Try-On layer transforms (Reanimated, direct 1:1 response to touch) are exempt. Spec §28a.7.
-- **Disabled state**: standard MD3 treatment (38% opacity content / 12% opacity container), derived from the same on-surface/surface tokens already in the theme rather than a separate hardcoded gray — applies wherever a control is conditionally disabled (Add Profile at 4/4, category delete blocked, an unfilled Outfit Builder slot). Spec §28a.9.
-- **Loading treatment**: `ActivityIndicator` (React Native Paper) for single-result waits with no progressive layout (Background Removal Review, Try-On Canvas); Reanimated-based skeleton/shimmer for list-shaped first loads (Wardrobe grid, Outfit Builder pickers) — no separate skeleton library needed. Spec §28a.9.
+- **Token module**: `src/app/theme/tokens.ts` exports a single typed `Tokens` object covering spacing, radius, elevation, stroke widths, opacity, icon/avatar/button/FAB/chip sizes, card/grid/nav spacing, animation durations, and the z-index/stacking policy (spec §44.1–§44.14) — every one of these is a named constant; a raw pixel/dp literal in a component's `StyleSheet` outside this file is a spec violation, not a style preference.
+- **Theme file structure** (spec §58.2): `colors.light.ts` / `colors.dark.ts` (the §28a.3 MD3 role tables), `statusColors.ts` (the Worn/Planned/Skipped semantic tokens, theme-aware by value rather than light/dark-split), `typography.ts` (the §28a.4 Inter role map), assembled into `light.ts` / `dark.ts` and consumed via a single `useAppTheme()` hook — never `Appearance.getColorScheme()` read directly inside a component. Phase 1 shipped an earlier, simpler theme shape (`paperTheme.ts`, `disabledState.ts`, `textContrast.ts`); Phase 2 refactors those into this structure rather than leaving two theme systems live side by side.
+- **Dynamic color / Material You**: deliberately *not* applied to the app's Paper theme (a fixed brand palette is part of the product's identity, spec §28a.2) — the only place Android 12+ dynamic color is used is the adaptive launcher icon's monochrome themed layer, which is an OS-level icon-theming mechanism, not a Paper theme concern (spec §58.4).
+
+## Icon, Illustration & Asset Pipeline (since §46, §49, §60)
+
+- **Base icons**: Material Symbols, Rounded style, configured per spec §46.1 (fill axis 0/1 for idle/selected, weight 400/500, optical size 24, grade 0) via React Native Vector Icons, already listed in the App Layer table.
+- **Custom icons & illustrations**: authored as SVG on a 24×24 (icons, spec §46.2) or 320×240 (illustrations, spec §49.1) artboard, run through SVGO (`removeViewBox: false`, `removeDimensions: true`, `convertShapeToPath: false`) as a Husky pre-commit hook alongside the existing lint/format hooks — a build-time pipeline addition, no new runtime dependency. Rendered via React Native SVG at runtime; no per-size raster variants are generated.
+- **Registration discipline**: every custom icon is added to the typed icon-name map (`src/shared/assets/icons/index.ts`) in the same commit that adds its SVG file — an icon with no map entry should fail lint, not exist as dead weight.
+- **Folder structure**: `src/shared/assets/{fonts,icons/base,icons/custom,illustrations}`; brand-only exports (Play Store icon, Feature Graphic, standalone logo layers) live under `docs/architecture/brand-assets/`, outside the app bundle (spec §60.6).
+
+## Design Process (since §59, §61, §62)
+
+Process, not code — recorded here because it gates what Phase 2+ treats as "spec-complete" for a screen:
+
+- **Figma source of truth**: a `wardrobeai-foundations` library (colors/type/spacing as Figma Variables, spec §59.2/§59.4) and a `wardrobeai-components` library (every component in spec §45 as a variant set, spec §59.3) are the authored origin for every token and component this file and the spec describe. A frame is only implementation-ready once tagged `Ready for Dev` (spec §59.8).
+- **Design QA Checklist** (spec §61): a manual visual-QA pass (alignment, contrast, dark/light, touch targets, reduced motion, responsiveness) run on a physical device before any feature is called done, in addition to — not instead of — the automated test layers below.
+- **Design Handoff Checklist** (spec §62): before implementation starts on a new screen, its Figma frame must satisfy this checklist (bound Variables, all required states present, empty/loading/error states specified, accessibility labels for icon-only controls, final copy). Both checklists apply starting with Phase 2 — Phase 0/1 predate them and are not retroactively audited against them.
+
+## Accessibility & UX Patterns (since §28a, §50–§53)
+
+No new libraries beyond the small native haptics module (Native Layer table above) — these are usage patterns on top of dependencies already listed:
+
+- **Reduced motion**: every non-gesture animation (toggles, screen transitions, the planner "Worn" microinteraction) must branch on React Native's `AccessibilityInfo.isReduceMotionEnabled()` / `reduceMotionChanged` event — which reflects Android's system "Remove animations" setting — and skip straight to the end state (≤50ms) when it's on. Gesture-driven Try-On layer transforms (Reanimated, direct 1:1 response to touch) are exempt. Spec §28a.7, and the full per-interaction table in spec §50.
+- **Disabled state**: standard MD3 treatment (38% opacity content / 12% opacity container), derived from the same on-surface/surface tokens already in the theme rather than a separate hardcoded gray — applies wherever a control is conditionally disabled (Add Profile at 4/4, category delete blocked, an unfilled Outfit Builder slot). Spec §28a.9, §44.4.
+- **Loading treatment**: `ActivityIndicator` (React Native Paper) for single-result waits with no progressive layout (Background Removal Review, Try-On Canvas); Reanimated-based skeleton/shimmer for list-shaped first loads (Wardrobe grid, Outfit Builder pickers) — no separate skeleton library needed. Spec §28a.9, §45.8.
+- **Haptics**: routed through a single `useHaptic()` hook (Native Layer table above) with one global on/off Settings toggle, default on — never a per-interaction preference. Spec §51.
+- **Sound**: optional, off by default (inverse of haptics — audible to everyone nearby on a shared household device, spec §4); every sound-paired event already has a haptic and/or visual signal as the primary carrier, so sound is never load-bearing for a screen-reader or muted-device user. Spec §52.
+- **Responsive breakpoints**: a shared `useBreakpoint()`-style hook wraps `useWindowDimensions` (phone portrait/landscape, tablet at `sw600dp`+) and Jetpack WindowManager's `FoldingFeature` (folded/unfolded, hinge-aware modal placement) — one hook, consumed everywhere, rather than ad hoc width checks per screen. Spec §53.
 
 ## Testing
 

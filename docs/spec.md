@@ -1,8 +1,10 @@
 # WardrobeAI — Software Specification (spec.md)
 
-**Version:** 1.3.1-draft
+**Version:** 1.4.0-draft
 **Status:** DRAFT — pending review and freeze
-**Last updated:** 2026-07-12
+**Last updated:** 2026-07-13
+
+**Changelog (1.3.1 → 1.4.0):** Implementation-level UX/UI pass. The document was ~95% complete at the requirements/architecture/brand level (§28a) but lacked the production-grade visual specification a design and engineering team need to build without further design documentation. Added twenty new sections (§44–§63): Design Token Specification, Component Library Specification, Iconography Specification, Logo Construction Guide, App Icon Package Specification, Illustration System, Microinteraction Specification, Haptic Feedback Specification, Sound Specification, Responsive Layout Specification, Screen-by-Screen Visual Specification, Camera UX Specification, Image Processing UX, Try-On Canvas Design Specification, Theme Implementation Guide, Figma Project Organization, Asset Pipeline, Design QA Checklist, Design Handoff Checklist, and an Appendix of consolidated token/asset/component tables. Nothing in §1–§43 was altered beyond this changelog entry; every new section extends, cross-references, and reuses the terminology, tokens, and decisions already frozen in §28a and elsewhere rather than restating or revising them.
 
 **Changelog (1.0.0 → 1.1.0):** Architecture/QA review pass. Fixed `wear_log` cascade behavior, `planner_entries` CHECK constraint, and category-delete UX gap. Added per-profile PIN (FR-4a/4b), default backup encryption (moved up from Future Roadmap), outfit-delete confirmation, un-mark-worn semantics, NFR-3 warm-run scoping, three new test-plan items, and switched native modules from Java to Kotlin. See inline changes below.
 
@@ -887,6 +889,1034 @@ Semantic Versioning (`MAJOR.MINOR.PATCH`) for the app itself, tracked in both `p
 - Backup/restore round trip re-verified on the release build specifically (not just dev builds), including the passphrase-encryption path.
 - Release notes written; tagged on `main`; merged back to `develop`.
 
+## 44. Design Token Specification
+
+§28a establishes the color, typography, and iconography *decisions*; this section makes every remaining visual constant a named, reusable token rather than a per-screen judgment call, so no two screens implement "a bit of padding" differently. All tokens below live in `src/app/theme/tokens.ts` (§17) and are consumed by both the React Native Paper theme objects (§28a.8) and raw `StyleSheet`/Reanimated values where Paper's theme doesn't reach (custom cards, the Try-On canvas, custom icons).
+
+### 44.1 Spacing Scale
+
+4dp base unit, matching MD3's grid and keeping every value a whole multiple of the 48dp touch-target grid (NFR-7):
+
+| Token | Value | Typical use |
+|---|---|---|
+| `space-2xs` | 2dp | Icon-to-badge micro gaps, stroke-adjacent offsets |
+| `space-xs` | 4dp | Icon-to-label gap inside a chip |
+| `space-sm` | 8dp | Wardrobe grid gutter (§44.11), tight icon/label pairs |
+| `space-md` | 12dp | Card image-to-text gap, list-item vertical padding |
+| `space-base` | 16dp | Screen margin, card internal padding, default component gap |
+| `space-lg` | 24dp | Section-to-section gap, button horizontal padding |
+| `space-xl` | 32dp | Empty-state illustration-to-copy gap |
+| `space-2xl` | 48dp | Empty-state top offset, major section breaks |
+| `space-3xl` | 64dp | Onboarding/celebratory screen top offset |
+
+### 44.2 Border Radius Scale
+
+Maps 1:1 to the MD3 shape scale; nothing outside this list is used anywhere in the app.
+
+| Token | Value | Applied to |
+|---|---|---|
+| `radius-none` | 0dp | Full-bleed images (item photo before crop), edge-to-edge list dividers |
+| `radius-xs` | 4dp | Text field top corners (MD3 filled field, bottom corners square) |
+| `radius-sm` | 8dp | Chips' inner content image (e.g. tag-chip swatch), snackbar |
+| `radius-md` | 12dp | Cards (Wardrobe/Outfit/Category/Statistic cards), list-item containers |
+| `radius-lg` | 16dp | Menus/dropdowns, tooltips |
+| `radius-xl` | 28dp | Dialogs, bottom sheet top corners, FAB (large variant) |
+| `radius-full` | 999dp (pill) | Buttons, chips, badges, PIN dots, avatar |
+
+### 44.3 Elevation Tokens
+
+MD3 tonal elevation, expressed as Android `elevation` dp (drives the system shadow) paired with the tonal-primary surface-overlay percentage used in dark theme (light theme relies on shadow only, per MD3 guidance that light-surface tonal overlays read as muddy):
+
+| Token | Elevation (dp) | Dark-theme surface-tint overlay | Components |
+|---|---|---|---|
+| `elevation-0` | 0dp | 0% | Resting cards, list items, backgrounds |
+| `elevation-1` | 1dp | 5% | Bottom sheet, filled text field surface |
+| `elevation-2` | 3dp | 8% | Menu/dropdown, scrolled Top App Bar |
+| `elevation-3` | 6dp | 11% | FAB (resting), dialog, snackbar |
+| `elevation-4` | 8dp | 12% | FAB (pressed/dragged) |
+| `elevation-5` | 12dp | 14% | Modal/full-screen overlay content (Loading Overlay) |
+
+### 44.4 Shadow & State-Layer Opacity Tokens
+
+Android renders the physical shadow from the `elevation-*` dp value automatically (View/RN `elevation` + Paper's `Surface`); these tokens instead cover the *interaction* overlays MD3 layers on top of a surface, expressed as On-Surface (or On-Primary, for filled surfaces) opacity:
+
+| Token | Opacity | Trigger |
+|---|---|---|
+| `state-hover` | 8% | N/A on touch-only Android targets; kept for parity if a foldable/desktop-mode cursor is ever detected |
+| `state-focus` | 12% | Keyboard/TalkBack focus ring fill |
+| `state-pressed` | 12% | Ripple/press feedback on any interactive surface |
+| `state-dragged` | 16% | Try-On garment layer while actively being dragged (§57) |
+| `scrim` | 32% | Dialog/bottom-sheet/modal backdrop over page content |
+| `disabled-content` | 38% | Disabled label/icon (§28a.9) |
+| `disabled-container` | 12% | Disabled container fill (§28a.9) |
+
+### 44.5 Stroke Widths
+
+| Token | Value | Applied to |
+|---|---|---|
+| `stroke-hairline` | 1dp | Dividers, outlined button/card/chip/text-field borders (idle) |
+| `stroke-focus` | 2dp | Outlined text field border (focused state), focus ring |
+| `stroke-icon` | 2dp | All Material Symbols and custom SVG icon strokes (§28a.5, matches the logomark's 2dp stroke, §47) |
+
+### 44.6 Opacity Tokens (Non-Interaction)
+
+| Token | Opacity | Use |
+|---|---|---|
+| `opacity-cutout-checker` | 6% (On-Surface, tiled) | Transparency checkerboard behind cutout thumbnails (§45.2) so a genuinely transparent PNG edge is distinguishable from a white background |
+| `opacity-image-loading` | 12% (Surface Variant placeholder tint) | FastImage placeholder fill before decode |
+| `opacity-illustration-bg` | 100% flat (no wash) | Empty-state illustrations sit on flat Surface, never a tinted panel, per §28a.6's minimal/quiet tone |
+
+### 44.7 Icon Sizes
+
+| Token | Value | Use |
+|---|---|---|
+| `icon-inline` | 16dp | Icons embedded inside body text or a numeric badge (§28a.5 wear-count badge) |
+| `icon-default` | 24dp | Standard MD3 icon grid — nav bar, buttons, list-item leading/trailing icons, all base and custom icons (§28a.5) |
+| `icon-medium` | 32dp | Empty-state inline accent icons, Settings row leading icons |
+| `icon-large` | 48dp | Dialog header icon (Confirmation/Error/Success Dialog, §45.9) |
+| `icon-illustration` | 96dp+ | Bounding box for the line illustrations themselves (§49), not a true "icon" but tracked here as the top of the icon-to-illustration size continuum |
+
+### 44.8 Avatar Sizes
+
+| Token | Value | Use |
+|---|---|---|
+| `avatar-sm` | 32dp | Compact contexts (About screen row, if profile name is echoed) |
+| `avatar-md` | 40dp | Default list/header profile chip |
+| `avatar-lg` | 64dp | Profile Selection grid card (§14, §54.2) |
+| `avatar-xl` | 96dp | Create/Edit Profile screen live preview (§54.4) |
+
+### 44.9 Button, FAB & Chip Heights
+
+| Token | Value | Notes |
+|---|---|---|
+| `height-button` | 40dp visual / 48dp touch target | Filled/Outlined/Text/Tonal buttons; the extra 8dp is transparent hit-slop padding, not a larger visual button, satisfying NFR-7 without inflating density |
+| `height-icon-button` | 40dp visual / 48dp touch target | Same hit-slop pattern as above |
+| `height-fab-small` | 40dp | Rarely used in this app (default/large preferred for the Try-On/Add-Item primary actions) |
+| `height-fab-default` | 56dp | Wardrobe "+" add-item action, Outfit Builder "+" |
+| `height-fab-large` | 96dp | Reserved, unused in v1 — tracked for tablet layouts (§31 Future Roadmap) |
+| `height-chip` | 32dp | All chip variants (§45.7) |
+
+### 44.10 Card & List Spacing
+
+| Token | Value | Use |
+|---|---|---|
+| `card-padding` | 16dp (`space-base`) | Internal padding on all card variants (§45.2) |
+| `card-image-gap` | 12dp (`space-md`) | Gap between a card's image and its text block |
+| `card-gutter` | 8dp (`space-sm`) | Gap between adjacent cards in a grid |
+| `list-item-padding-v` | 12dp (`space-md`) | Vertical padding inside a List Item |
+| `list-item-padding-h` | 16dp (`space-base`) | Horizontal padding inside a List Item |
+| `list-item-min-height` | 56dp | One-line List Item; 72dp for two-line (with subtitle) |
+
+### 44.11 Grid Spacing
+
+| Token | Value | Use |
+|---|---|---|
+| `grid-margin` | 16dp | Outer margin, all grid layouts (Wardrobe grid, Outfit picker) |
+| `grid-gutter` | 8dp (`card-gutter`) | Inter-cell gutter |
+| `grid-columns-phone-portrait` | 2 | Wardrobe grid, phone portrait (§53.1) |
+| `grid-columns-phone-landscape` | 3 | Wardrobe grid, phone landscape (§53.2) |
+| `grid-columns-tablet` | 4 | Wardrobe grid, tablet/foldable-unfolded (§53.3/§53.4) |
+
+### 44.12 Navigation Spacing
+
+| Token | Value | Use |
+|---|---|---|
+| `top-app-bar-height` | 64dp | Standard Top App Bar (§45.3) |
+| `bottom-nav-height` | 80dp | Bottom Navigation bar, icon (24dp) + label (12sp) + vertical padding, plus system nav-bar inset (§53.5) |
+| `bottom-nav-icon-size` | 24dp (`icon-default`) | |
+| `bottom-nav-label-size` | 12sp | Label Medium role, not in the §28a.4 table because it's exclusively a nav-bar value |
+| `nav-rail-width` | 80dp (collapsed) / 220dp (expanded, with labels) | Navigation Rail, future tablet layout only (§45.3, §31) |
+
+### 44.13 Animation Durations
+
+MD3 duration scale, the full set from which §28a.7's "100–200ms toggles / ~300ms transitions" language draws its concrete values:
+
+| Token | Duration | Easing curve | Use |
+|---|---|---|---|
+| `duration-short-1` | 50ms | Standard | Reduced-motion substitute for any token below (§28a.7) |
+| `duration-short-2` | 100ms | Standard | Chip/toggle state change, ripple state-layer fade-in |
+| `duration-short-3` | 150ms | Standard | Favorite-heart fill toggle (paired with the spring bounce, §28a.7) |
+| `duration-short-4` | 200ms | Standard | Dialog/menu exit |
+| `duration-medium-1` | 250ms | Standard-decelerate | Snackbar enter, dialog enter |
+| `duration-medium-2` | 300ms | Standard-decelerate | Screen transition (push/pop), bottom sheet enter |
+| `duration-medium-3` | 350ms | Standard | Tab-switch content cross-fade |
+| `duration-medium-4` | 400ms | Standard | FAB-to-extended-FAB morph |
+| `duration-long-1` | 450ms | Emphasized-decelerate | Full-screen modal enter (Camera, Try-On Canvas) |
+| `duration-long-2` | 500ms | Emphasized | Onboarding/celebratory "all caught up" illustration entrance (§28a.6) |
+
+Standard easing curve = MD3 `cubic-bezier(0.2, 0.0, 0, 1.0)`; emphasized-decelerate = `cubic-bezier(0.05, 0.7, 0.1, 1.0)`. Reanimated's `withTiming`/`Easing.bezier` are configured with these exact curves so native and JS-driven animations feel identical (§19).
+
+### 44.14 Z-Index / Stacking Policy
+
+React Native has no CSS cascade `z-index`; RN Screens (§40) gives each navigator its own native stacking context, but *within* a single screen, stacking order is otherwise just render order. This project fixes an explicit layering policy so overlapping UI (FAB over a scrolling grid, a Snackbar over a bottom sheet) is deterministic rather than accidental:
+
+| Layer | Token value | Contents |
+|---|---|---|
+| Content | 0 | Screen body, scrollable grids/lists |
+| Sticky header | 1 | Scrolled Top App Bar, search bar collapsed state |
+| Floating action | 2 | FAB |
+| Overlay scrim | 10 | Bottom sheet / dialog backdrop |
+| Overlay content | 11 | Bottom sheet / dialog / dropdown surface |
+| Loading overlay | 20 | Full-screen `LoadingOverlay` (§45.8) |
+| Transient feedback | 30 | Snackbar, Tooltip |
+
+A Snackbar (30) is deliberately layered above a Bottom Sheet (11) — e.g., an undo-delete Snackbar (§50) must remain visible even if the user has a filter bottom sheet open. Implemented via a single app-root `<Portal>` (React Native Paper, §40) per layer band rather than manual z-index math per screen.
+
+## 45. Component Library Specification
+
+Every reusable component surfaced anywhere in §13/§14, specified to the level a developer can implement without opening Figma. Components already fully described by React Native Paper's default MD3 implementation are noted as "Paper default" with only the *deltas* this app applies (theme tokens from §28a.3/§44, and any behavior this app adds); fully custom components (never in Paper) get a complete spec. All components live under `src/shared/components/` (§17) unless marked feature-local.
+
+### 45.1 Buttons & FAB
+
+- **Filled Button** (Paper default, themed): primary call-to-action, one per screen/section max (e.g., "Save Item," "Export Backup"). States: enabled, focused, pressed, disabled. Height `height-button` (44.9), radius `radius-full` (44.2), horizontal padding `space-lg`/24dp, icon-label gap `space-xs`/8dp, no resting elevation (`elevation-0`) per MD3's flat-button guidance. Press feedback: `state-pressed` ripple, `duration-short-2` fade. Disabled: `disabled-content`/`disabled-container` tokens. Accessibility: `accessibilityRole="button"`, 48dp touch target guaranteed via hit-slop even though the visual height is 40dp.
+- **Outlined Button** (Paper default, themed): secondary action alongside a Filled Button (e.g., "Cancel" beside "Save"). Same geometry as Filled; `stroke-hairline`/1dp Outline-color border instead of a fill; no elevation.
+- **Text Button** (Paper default, themed): lowest-emphasis action (e.g., "Skip," inline "Retry" link in an error state). No container, no border; label-only with `state-pressed` ripple confined to a `radius-sm` hit area around the text.
+- **Tonal Button** (Paper default, themed): used specifically for the Secondary Container-colored "Forgot PIN" and "Retake" actions — higher emphasis than Text, lower than Filled.
+- **Icon Button**: 40dp visual / 48dp touch target, `radius-full`, icon `icon-default`/24dp centered. Two sub-variants used in this app: *standard* (transparent until pressed, e.g. Top App Bar actions) and *toggle* (persistent Primary/Tertiary tint when active, e.g. the favorite-heart icon button, §28a.5). Accessibility: icon-only buttons are the one case where `accessibilityLabel` is mandatory rather than inferred from visible text (§28, §24).
+- **FAB**: `height-fab-default`/56dp, `radius-lg`/16dp (MD3 FAB corner, not full-pill — this is the one primary-action shape exception to the pill rule in §44.2), `elevation-3` resting / `elevation-4` pressed-or-dragged. Used for Wardrobe "+" (Item Capture entry) and Outfit Builder "+" (add another category slot). Press animation: scale to 0.94 with a spring (`duration-short-3`-equivalent spring config, damping 15/stiffness 300) then release.
+
+### 45.2 Cards & List Items
+
+- **Card (base)**: `radius-md`/12dp, `card-padding`/16dp internal padding, `elevation-0` resting (this app uses outlined/tonal cards, not shadowed cards, to keep the flat "quietly technical" tone from §28a.1 — a `stroke-hairline` Outline-Variant border substitutes for elevation as the resting affordance). Pressed state: brief `elevation-1` lift + `state-pressed` overlay, `duration-short-2`.
+- **Wardrobe Card**: Card base + cutout thumbnail (checkerboard `opacity-cutout-checker` behind any transparent PNG region, §44.6) at a fixed 1:1 aspect crop, `card-image-gap`/12dp below the image, Title Medium item name, Body Medium brand/category line, favorite Icon Button toggle top-right overlaying the image corner, numeric wear-count badge bottom-right of the image (Tertiary-on-Surface small pill, no icon per §28a.5).
+- **Outfit Card**: Card base + flat-lay composite thumbnail (multiple item cutouts arranged in a fixed template grid, not a live try-on render — cheap to compute, no CV needed just to browse outfits), outfit name, item-count subtext, favorite toggle.
+- **Category Card**: used only in Category Management (list row style, not grid), Card base collapsed to `list-item-min-height`/56dp, drag handle (reorder, FR-8) leading, name centered, item-count trailing, overflow menu (rename/delete) trailing-most; delete action rendered `disabled-*` (§44.4/§28a.9) when item count > 0.
+- **Profile Card**: square Card base, `avatar-lg`/64dp avatar centered, name below, long-press reveals edit/delete (FR-3); PIN-protected profiles show a small `lock` Material Symbol badge (§28a.5) bottom-right of the avatar.
+- **Statistic Card**: Card base, Display Small tabular-figure number (§28a.4) as the focal element, Label Large caption below (e.g. "items never worn"), optional leading `icon-medium` accent icon; used on the Statistics Dashboard's summary row.
+- **Calendar Cell**: 1/7-width square (min 40×40dp to clear touch-target math at 7 columns on a 360dp-wide device — see §53.1 for the arithmetic), date number Body Medium, a `radius-sm` colored dot/fill indicating planner status using the Worn/Planned/Skipped tokens (§28a.3) — filled circle for Worn, outlined ring for Planned, muted dot for Skipped, nothing for no entry. Today gets a `stroke-focus` Primary ring regardless of status.
+- **List Item** (Paper default, themed): `list-item-padding-h`/16dp, `list-item-padding-v`/12dp, leading icon/avatar slot (`icon-default` or `avatar-sm`), title (Title Medium or Body Medium depending on one/two-line variant), optional subtitle (Body Medium, On-Surface-Variant), trailing icon/switch/chevron slot. Used throughout Settings and Category Management.
+- **Section Header**: Label Large, On-Surface-Variant color, `space-base`/16dp top margin, `space-sm`/8dp bottom margin, all-caps *not* used (per §28a.1's non-shouty tone) — sentence case only (e.g. "Recently added," "Most worn").
+
+### 45.3 Navigation Components
+
+- **Top App Bar** (Paper default, themed): `top-app-bar-height`/64dp, `elevation-0` at rest / `elevation-2` once content scrolls beneath it (standard MD3 scroll-elevate behavior), title Title Medium, leading back/menu Icon Button, trailing action Icon Buttons (max 2 visible + overflow).
+- **Bottom Navigation** (Paper default, themed): `bottom-nav-height`/80dp + bottom system-inset padding (§53.5), 5 destinations max (Home, Wardrobe, Planner, Try-On, More — §12), outlined/filled icon-state pattern per §28a.5, active label tinted Primary, inactive On-Surface-Variant.
+- **Bottom App Bar**: not used in this app's v1 navigation (Bottom Navigation covers the same role per §12's tab structure) — included in the shared component library only as a Paper-default pass-through for any future screen-local contextual action bar (e.g., a multi-select "3 selected · Delete/Favorite" bar on the Wardrobe grid), not currently wired to a screen.
+- **Navigation Drawer**: not used in v1 navigation (§12 is bottom-tab-only by design, matching a phone-first flagship-device target, §8). Retained in the shared library, unstyled beyond base theming, because the Future Roadmap's tablet multi-pane layout (§31) is the one scenario where a permanent drawer replacing the bottom tab bar becomes the right pattern; no screen references it today.
+- **Navigation Rail (future)**: same status as Navigation Drawer — a Paper-default component, themed but not instantiated by any current screen. `nav-rail-width` tokens (§44.12) are pre-defined so the eventual tablet work (§31) has them ready rather than inventing values mid-implementation.
+
+### 45.4 Search
+
+- **Search Bar** (collapsed/idle state, on Wardrobe Grid header): full-width pill (`radius-full`), `height-button`-equivalent 40dp track, leading `search` Material Symbol, placeholder "Search wardrobe," trailing filter Icon Button that opens the filter chip row (FR-10). Tapping the field (not the filter icon) expands into the Search Field below.
+- **Search Field** (active/expanded state): Top App Bar transforms in-place into a text input (`duration-medium-1`/250ms cross-fade, not a separate screen/route) with a leading back-arrow Icon Button (collapses back to Search Bar, clearing focus but preserving typed text) and a trailing clear ("x") Icon Button (clears text, keeps focus). Live-filters the grid on every keystroke, debounced 150ms against the SQLite query (§27 performance pattern) rather than on every keystroke unthrottled.
+
+### 45.5 Text Input
+
+- **Text Field** (Paper default, MD3 filled variant, themed): `radius-xs`/4dp top corners only (flat bottom per MD3 filled-field spec), `stroke-hairline`/1dp bottom indicator idle, `stroke-focus`/2dp Primary bottom indicator focused, label floats from placeholder to top-caption position on focus/fill (`duration-short-2`). Used for name/brand/color/size fields on the Item Metadata Form, the outfit-name field, and the backup passphrase field.
+- **Password Field**: a Paper Text Field variant with a trailing visibility-toggle Icon Button and masked input — included in the shared library for completeness since Paper ships it, but this app has **no traditional username/password authentication** (§7 Constraints: no accounts, no login) so it has no live call site. The backup passphrase field (FR-29a/FR-30) intentionally *reuses this exact variant* (masked-by-default, toggleable) since a passphrase has the same UX shape as a password, even though it isn't authenticating a user identity.
+- **PIN Entry**: the actual authentication-input component for FR-4a/FR-4b, not a text field at all — six (or however many digits the user set, 4+ minimum) `radius-full` dot/box targets in a row, each 40×40dp, filled Primary on entry, paired with a custom numeric keypad (not the system IME, to keep the gate visually consistent and to prevent the OS predictive-text bar from ever appearing over a security surface). Wrong-PIN feedback: all dots briefly shake (horizontal translate ±4dp, 3 cycles, `duration-short-3` per cycle) and flash Error-container, paired with the PIN-failure haptic (§51).
+- **Dropdown** (Paper `Menu` anchored to a Text Field, themed): used for Category picker and Season picker on the Item Metadata Form. Opens `elevation-2`, `radius-lg`/16dp menu below/above the anchor depending on available space, `duration-short-3` enter.
+
+### 45.6 Overlays: Dialog, Bottom Sheet, Snackbar, Tooltip
+
+- **Dialog** (Paper default, themed): `radius-xl`/28dp, `elevation-3`, max-width capped on tablet (§53.3) rather than stretching full-width, `scrim`/32% backdrop. Enter `duration-medium-1`/250ms scale-and-fade from 0.9→1.0, exit `duration-short-4`/200ms reverse. Base for Confirmation/Error/Success/Backup-Progress Dialog (§45.9).
+- **Bottom Sheet** (Paper default, themed): `radius-xl` top corners only, `elevation-1`, used for the Wardrobe filter panel (FR-10 filters) and the Item Capture "Camera or Gallery" chooser. Enter: slide up `duration-medium-2`/300ms emphasized-decelerate; drag-to-dismiss follows the user's finger 1:1 via Gesture Handler (§40), snapping back or dismissing based on velocity threshold (>800dp/s or past 50% sheet height).
+- **Snackbar** (Paper default, themed): `radius-sm`/8dp, `elevation-3`, On-Surface-Inverse background (MD3's inverse-surface token, distinct from the main light/dark palette so it stays legible regardless of current theme), single optional action (e.g. "Undo" — §50), auto-dismiss 4s unless an action is present (then 8s), swipe-to-dismiss enabled. Stacking policy: §44.14 (renders above bottom sheets).
+- **Tooltip** (Paper default, themed): long-press-triggered (500ms hold) plain-text hint on icon-only controls where the `accessibilityLabel` exists but no visible label does (e.g. a Top App Bar overflow icon) — supplementary for sighted users, not a substitute for the accessibility label TalkBack already reads.
+
+### 45.7 Chips & Badges
+
+- **Chip (base)** (Paper default, themed): `height-chip`/32dp, `radius-full`, `stroke-hairline` outline idle.
+- **Filter Chip**: toggled state fills Secondary-Container (idle: Surface + outline), used for the Wardrobe category/season/color/favorite filters (FR-10) — multi-select, composes with Search per FR-10's AND semantics.
+- **Assist Chip**: single leading icon + label, no toggle state, used for one-shot suggestions (e.g. a "Try this outfit" assist chip surfaced from Home Dashboard's "today's planned outfit" card, linking straight into Try-On).
+- **Tag Chip**: same visual as a Filter Chip but represents a *stored* item tag (FR-9) rather than a filter predicate — appears read-only on Item Detail, editable (with an "x" remove affordance) on the Item Metadata Form.
+- **Badge** (Paper default, themed): small `radius-full` dot or numeral overlay, used only for the wardrobe-item wear-count (§28a.5 — plain numeral, no icon) and the Profile Selection PIN-lock indicator badge (`lock` symbol at `icon-inline`/16dp).
+
+### 45.8 Progress, Loading & Skeletons
+
+- **Progress Indicator** (Paper `ActivityIndicator`, themed Primary): indeterminate circular spinner, the default treatment for any wait with no progressively-revealable content (§28a.9) — Background Removal Review, Try-On Canvas compositing, Backup export/restore.
+- **Skeleton Loader**: Reanimated-driven shimmer (a `Surface-Variant`-to-`Surface` gradient sweep, `duration-long-2`/500ms loop, linear easing) shaped as gray card/row placeholders matching the exact grid/list geometry of the content it precedes — Wardrobe grid and Outfit Builder item pickers on first SQLite load only (§28a.9), never shown again once that screen's data is cached in Redux for the session.
+- **Loading Overlay**: full-screen, `scrim`/32%-over-Surface backdrop + centered Progress Indicator + optional single-line status caption (e.g. "Restoring backup…"), stacking layer 20 (§44.14). Used for Backup/Restore (§45.9) and any native-module call expected to exceed ~1s where the user shouldn't interact with anything beneath it (as opposed to the lighter in-place spinners above, which allow the rest of the screen to remain visible/interactive where safe).
+
+### 45.9 Empty States & Confirmation/Result Dialogs
+
+- **Empty State**: illustration (§49) + Title Medium headline + Body Medium supporting copy + optional single Filled/Tonal Button CTA, vertically centered in the available content area, `space-xl`/32dp between illustration and copy. Screens: empty Wardrobe, empty Planner, empty Favorites, Statistics "all caught up," Outfit Builder with zero wardrobe items (§28a.6).
+- **Confirmation Dialog**: Dialog base (§45.6), `icon-large`/48dp neutral/Warning-toned icon (not Error-colored unless the action is destructive), headline + one-sentence consequence copy, two actions (Text Button "Cancel" + Filled/Error-colored Button for the confirming action). Used for profile deletion (FR-3), category deletion pre-check failure explanation (FR-8), outfit deletion with planner impact (FR-13), and un-mark-worn.
+- **Error Dialog**: Dialog base, `icon-large` Error-colored icon, maps directly to the typed error codes in §23 (`POSE_NO_BODY_DETECTED`, `SEGMENTATION_FAILED`, `CV_OUT_OF_MEMORY`, `BACKUP_CORRUPT_ARCHIVE`, `BACKUP_BAD_PASSPHRASE`), single "OK"/"Retry" action depending on whether §23 classifies the failure as recoverable.
+- **Success Dialog**: Dialog base, `icon-large` Success-toned (Worn/Success token, §28a.3) icon, used sparingly — only for Backup export/restore completion (a rare, high-stakes action worth a confirming dialog rather than a passive Snackbar) — every other success (save item, save outfit, mark worn) uses the lighter Snackbar or in-place micro-animation instead (§50), keeping the "quietly polished, not gamified" tone from §28a.7.
+- **Backup Progress Dialog**: a non-dismissible Dialog variant (no scrim-tap-to-close, no back-button dismiss) showing a determinate Progress Indicator (percentage known: file count during export, byte count during restore) plus a live status line ("Encrypting… / Copying images… / Verifying…"), replaced on completion by the Success Dialog or an Error Dialog (bad passphrase/corrupt archive) in place, without the user needing to dismiss an intermediate state first.
+
+### 45.10 Media Capture Components
+
+- **Image Picker**: the Camera-or-Gallery entry sheet (a Bottom Sheet instance, §45.6) presented from the Wardrobe "+" FAB; two large tappable rows (Camera / Gallery), each `list-item-min-height`-equivalent 56dp+ with a leading `icon-medium` and label.
+- **Camera Overlay**: full-screen Vision Camera (§40) preview with a persistent translucent (Surface at 60% opacity) top/bottom control bar (shutter, flash toggle, camera-flip, close), and a mode-specific guide layer drawn as an SVG overlay: a garment-silhouette bounding guide for Item Capture (FR-5) versus a full-body framing guide for Profile Body Photo Capture (FR-23) — see §55 for the complete camera UX spec.
+- **Crop Overlay**: React Native Image Crop Picker's native crop UI (§40), themed via its Android theme-attribute overrides (Primary-colored grid lines and corner handles rather than the library's default) rather than reimplemented in RN, since it's a native modal the library already owns — see §55.5 for aspect-ratio presets and gesture behavior.
+
+### 45.11 Try-On Canvas Components
+
+- **Try-On Layer**: a single composited-and-warped garment image rendered as a Reanimated-animated `Image` inside the Try-On Canvas, one per garment in the active outfit, `layer_order` (§15 schema) driving render/z-order — full spec in §57.
+- **Gesture Handle**: the four-corner scale/rotate handle set plus a center move-handle that appears around the currently-selected Try-On Layer, `stroke-focus`/2dp Primary circles at `icon-default`/24dp diameter at each corner — full spec in §57.4.
+
+## 46. Iconography Specification
+
+Extends §28a.5's base-set/custom-set decision into exact export parameters.
+
+### 46.1 Material Symbols Configuration
+
+| Axis | Value | Note |
+|---|---|---|
+| Family | Material Symbols | Not the legacy "Material Icons" font — Symbols is the variable-axis successor and the only one that supports the Rounded style used here |
+| Style | Rounded | Matches the 2dp-stroke, soft-cornered custom icon set (§46.2) more closely than Sharp/Outlined-classic |
+| Fill axis | 0 (outlined/idle), 1 (filled/selected) | Drives the §28a.5 selection-state pattern |
+| Weight (`wght`) | 400 (idle), 500 (selected/active) | A small weight bump reinforces the fill-based selection state without changing the glyph's footprint |
+| Grade (`GRAD`) | 0 | Neutral; the −25/0/200 grade axis is meant for light/dark contrast tuning, which this app already handles via explicit on-color tokens (§28a.3), so grade is left at the neutral default rather than double-compensating |
+| Optical size (`opsz`) | 24 | Matches the fixed 24dp icon grid (§44.7); the 20/40/48 optical variants are not used since this app has no icon sizes outside `icon-default`/24dp and `icon-inline`/16dp (which reuses the 24 `opsz` glyph scaled down, not a distinct optical cut) |
+
+### 46.2 Custom Icon Grid Specification
+
+| Property | Value |
+|---|---|
+| Artboard | 24×24dp |
+| Live/safe area | 20×20dp centered (2dp margin all sides), matching Material Symbols' own live-area convention so custom and base icons optically match at a glance |
+| Stroke width | 2dp (`stroke-icon` token, §44.5) |
+| Corner radius (glyph strokes) | 2dp round joins/caps — never a hard miter, matching the Rounded Material Symbols style |
+| Grid | 4dp sub-grid (6 columns/rows across the 24dp artboard) for endpoint alignment, same discipline Material Symbols itself is drawn to |
+
+### 46.3 SVG Export & File Convention
+
+| Property | Rule |
+|---|---|
+| Naming | `ic_<concept>_<state>.svg`, snake_case, state suffix only when a two-state pair exists (`_outline` / `_filled`) — e.g. `ic_tryon_outline.svg`, `ic_tryon_filled.svg`, `ic_cutout.svg` (single-state) |
+| Folder structure | `src/shared/assets/icons/base/` (any Material Symbol this app re-exports as a static SVG rather than pulling from the Vector Icons font, for icons needing a non-standard fill/weight combination) and `src/shared/assets/icons/custom/` (the §28a.5 custom subset) |
+| Vector optimization | Run through SVGO (headless, as a pre-commit hook alongside Husky, §39) with `removeViewBox: false`, `removeDimensions: true`, `convertShapeToPath: false` (paths already authored as paths in Figma, §59) — no visual regression, pure byte-size reduction |
+| Export size | Authored/exported at 24×24 viewBox regardless of render size; `react-native-svg` (§40) scales at runtime, so no per-size raster variants are generated |
+| Registration | Every custom icon is added to the typed icon-name map (§28a.8, `src/shared/assets/icons/index.ts`) the same commit it's added to the folder — an icon file with no map entry fails a lint rule (§39) rather than silently existing unused |
+
+## 47. Logo Construction Guide
+
+Expands §28a.2's mark description into buildable geometry and usage rules.
+
+### 47.1 Construction Grid
+
+The logomark (two overlapping hanger silhouettes forming a negative-space "W") is constructed on a 12×12 unit grid: each hanger silhouette's hook radius = 1.5 units, shoulder-line width = 10 units, drop height = 8 units, stroke weight = 1 unit (which scales to the 2dp stroke at the mark's minimum on-screen size, §47.3). The two hangers are offset horizontally by 6 units (half the grid) and overlap by 2 units at their shoulder line, which is what forms the negative-space "W" between them — the overlap amount is the one dimension that must never be adjusted independently of the other two, since it is what makes the mark legible as a "W" rather than as two unrelated hangers.
+
+### 47.2 Clear Space
+
+Minimum clear space on all four sides = 1× the mark's own height (the "cap height" rule), measured from the outermost stroke edge. No other UI element (text, icon, edge of screen) may intrude into this space — enforced concretely at the two real call sites: the Top App Bar never places a title/action within clear-space distance of the mark on the About screen lockup, and the adaptive icon's own 108dp canvas (§47.7) already reserves clear space by construction (the 66dp safe zone is itself larger than mark-height + 2× clear-space at the icon's rendered size).
+
+### 47.3 Minimum & Maximum Size
+
+| Context | Size |
+|---|---|
+| Minimum (icon-only mark) | 24dp (matches `icon-default`, §44.7) — below this the 2dp stroke and the hook details begin to fill in at typical screen densities, so 24dp is a hard floor, not a suggestion |
+| Minimum (icon + wordmark lockup) | 32dp mark height (wordmark text becomes illegible below Inter 14sp, which sets this floor) |
+| Maximum | No hard ceiling — the mark is vector (SVG/adaptive-icon vector drawable), but the Play Store Feature Graphic (§48) is the single largest deployed instance at 180dp mark height within a 1024×500px canvas |
+
+### 47.4 Incorrect Usage
+
+The mark may not be: recolored outside the Primary/On-Primary pair (§28a.2) or the monochrome rules below; stretched non-uniformly; rotated; placed on a background that fails WCAG AA contrast against whichever fill (Primary or On-Primary) is used; combined with a drop shadow or bevel (contradicts the flat, quietly-technical tone of §28a.1); redrawn with sharp/mitered hook corners (breaks the Rounded-style consistency with the icon system, §46.2); or cropped tighter than its own clear space (§47.2).
+
+### 47.5 Logo Colors: Light, Dark & Monochrome
+
+| Context | Mark fill | Background |
+|---|---|---|
+| Light theme, on Surface | Primary (`#4F46E5`) | Surface (`#FFFBFF`) |
+| Dark theme, on Surface | Primary (`#C6C1FF`, the dark-theme Primary token, §28a.3) | Surface (`#1B1B1F`) |
+| On a filled-Primary surface (e.g. onboarding hero) | On Primary (`#FFFFFF` light / `#1F1370` dark) | Primary |
+| Monochrome (single-color contexts: notification icon, themed adaptive icon, watermark) | 100% On-Surface-equivalent, alpha shape only — no tonal variation | Transparent |
+
+### 47.6 Adaptive Icon Construction
+
+Restates and extends §28a.2's adaptive-icon paragraph with exact layer geometry:
+
+| Layer | Spec |
+|---|---|
+| Canvas | 108×108dp (Android adaptive-icon standard) |
+| Safe zone | 66×66dp centered circle/square (both mask shapes must keep content legible — the mask itself is applied by the OS launcher, not baked into the asset) |
+| Background layer | Flat Primary fill, or the two-stop Primary→Primary-Container gradient variant (§28a.2), full 108×108dp, no transparency |
+| Foreground layer | Logomark centered, scaled so its own construction-grid height (§47.1) = 44dp (fits inside the 66dp safe zone with margin, since Android launchers apply parallax/mask cropping that can clip content right at the safe-zone edge) |
+| Monochrome themed layer (API 33+) | Single foreground-only vector drawable, On-Surface-equivalent shape at 100% alpha, transparent elsewhere — tinted by the OS to the user's Material You palette (§28a.2) |
+
+### 47.7 Favicon, Notification Icon, Launcher Icon, Play Store Icon
+
+| Asset | Construction | Notes |
+|---|---|---|
+| Launcher icon | Adaptive icon (§47.6) | The only icon that uses the two-layer adaptive system |
+| Notification icon | Monochrome silhouette only, per Android's mandatory notification-icon rule (the OS renders it in a single system-chosen color regardless of what's exported) — full-bleed mark, no clear-space padding needed since the OS applies its own circular mask | 24×24dp @ mdpi baseline, exported at the standard Android density buckets (§48.9) |
+| Favicon | Icon-only mark, Primary-on-transparent, 32×32px PNG | Only used if/when a marketing site exists — no in-app call site, tracked here for brand-asset completeness per this section's own scope |
+| Play Store icon | Icon-only mark, full color, flat Surface (not transparent — Play Store icons render on a fixed white/light card, not the device's live wallpaper) | 512×512px, PNG, see §48.5 |
+
+### 47.8 Branding Lockups
+
+Two lockups only, per §28a.2: **icon-only** (app icon, splash, favicon, notification icon) and **icon + wordmark, horizontal** (About screen, Feature Graphic, any future marketing asset) — a stacked/vertical lockup is deliberately not defined, since no current or near-term surface (§13 screen list) has the vertical aspect ratio that would justify one; adding it speculatively would be exactly the kind of unrequested variant this document otherwise avoids.
+
+## 48. App Icon Package Specification
+
+Every exported visual asset the build actually ships, in one place, since these are currently scattered as passing references across §17/§28a.2/§47.
+
+### 48.1 Adaptive Icon Assets
+
+| File | Path | Format |
+|---|---|---|
+| `ic_launcher_background.xml` | `android/app/src/main/res/drawable/` (or `values/ic_launcher_background.xml` colors reference) | Vector drawable / flat color resource |
+| `ic_launcher_foreground.xml` | `android/app/src/main/res/drawable/` | Vector drawable (logomark, §47.6) |
+| `ic_launcher_monochrome.xml` | `android/app/src/main/res/drawable/` | Vector drawable (API 33+ themed icon, §47.6) |
+| `ic_launcher.xml` / `ic_launcher_round.xml` | `android/app/src/main/res/mipmap-anydpi-v26/` | Adaptive-icon XML referencing the three drawables above |
+| Legacy raster fallback (`ic_launcher.png`) | `android/app/src/main/res/mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/` | PNG, pre-flattened background+foreground, required for API <26 — moot given `minSdkVersion 31` (§8), but generated automatically by the standard Android icon tooling and kept for tooling compatibility, not because any supported OS version reads it |
+
+### 48.2 Foreground / Background (Standalone Exports)
+
+Design-tool export pair (Figma, §59) kept alongside the shipped drawables for re-export if the mark ever changes: `logo-foreground.svg` (44dp construction-grid mark, §47.6) and `logo-background.svg` (flat/gradient fill), both at 108×108dp artboard, stored in `docs/architecture/brand-assets/` (a new leaf under the existing `docs/` tree, §17) rather than under `android/`, since these are source-of-truth design files, not build inputs.
+
+### 48.3 Monochrome Icon
+
+Same file as §48.1's `ic_launcher_monochrome.xml`; no separate standalone export exists since its only consumer is the adaptive-icon system.
+
+### 48.4 Play Store Icon
+
+512×512px PNG, 32-bit with alpha channel ignored (Play Console flattens to opaque), icon-only lockup (§47.8) on flat Surface per §47.7, exported at `docs/architecture/brand-assets/play-store-icon-512.png`.
+
+### 48.5 Feature Graphic
+
+1024×500px PNG/JPEG, horizontal icon+wordmark lockup (§47.8) left-aligned with generous clear space (§47.2) on a flat Primary-Container background, no screenshot collage (keeps the "confident, minimal" tone, §28a.1, rather than a busy marketing composite) — exported at `docs/architecture/brand-assets/feature-graphic-1024x500.png`.
+
+### 48.6 Splash Assets
+
+Per §28a.2: icon-only mark on flat Surface. Implemented via Android 12+'s native `SplashScreen` API (not a custom RN splash library, since `minSdkVersion 31` already guarantees the platform API is available) — a single `windowSplashScreenAnimatedIcon` vector drawable (reusing `ic_launcher_foreground.xml`, §48.1) plus `windowSplashScreenBackground` set to the Surface color resource, themed separately for light/dark via `values-night/`.
+
+### 48.7 Notification Icon
+
+`ic_notification.xml`, monochrome silhouette per §47.7, `android/app/src/main/res/drawable/`, referenced from the native notification-builder code path used for the one existing notification-adjacent surface — note per §33 Assumptions, this app sends **no push/local notifications in v1** (Planner is manual-check only), so this asset currently has no live call site either; it is nonetheless part of the standard Android icon package generated alongside the launcher icon and kept ready against the (currently unplanned) day a reminder feature is considered.
+
+### 48.8 Shortcut Icon & Dynamic Icon
+
+**Static shortcut icons** (Android App Shortcuts, long-press-launcher-icon menu): two shortcuts ship — "Add Item" (deep-links to Item Capture) and "Try On" (deep-links to the Try-On tab, using the last-used outfit if one exists) — each a 108×108dp adaptive-icon-shaped drawable reusing the relevant base-set Material Symbol (`add_a_photo`, custom Try-On icon §28a.5) on a flat Primary-Container circle, defined in `android/app/src/main/res/xml/shortcuts.xml`.
+
+**Dynamic icon**: not implemented in v1 — the launcher icon does not change based on app state (e.g. no seasonal or profile-colored icon variants). Explicitly out of scope rather than an oversight: it would conflict with the adaptive-icon Material You theming already committed to in §47.6, and no persona/user-story (§4/§9) asks for it.
+
+### 48.9 Sizes, Export Formats & Naming Conventions (Consolidated)
+
+| Asset class | Sizes exported | Format | Naming pattern |
+|---|---|---|---|
+| Adaptive icon layers | Vector (density-independent) | XML (`VectorDrawable`) | `ic_launcher_<layer>.xml` |
+| Legacy launcher fallback | 48/72/96/144/192px (mdpi–xxxhdpi) | PNG | `mipmap-<density>/ic_launcher.png` |
+| Notification icon | 24/36/48/72/96px (mdpi–xxxhdpi) | PNG (monochrome, alpha-only) | `drawable-<density>/ic_notification.png` |
+| Shortcut icons | Vector (density-independent) | XML | `ic_shortcut_<name>.xml` |
+| Play Store icon | 512×512px | PNG | `play-store-icon-512.png` |
+| Feature Graphic | 1024×500px | PNG | `feature-graphic-1024x500.png` |
+| Custom SVG icon set (§46) | 24×24 viewBox | SVG | `ic_<concept>[_<state>].svg` |
+| Illustrations (§49) | 1× vector source | SVG | `il_<concept>.svg` |
+
 ---
 
-*This document is a DRAFT pending your review. Items in §32 (Risks) and §34 (Open Questions) are the only pieces intentionally left unresolved — everything else reflects the decisions made during Discovery and the v1.1 architecture/QA review pass. Flag anything you want changed before we freeze it and move to Phase 4 (Architecture).* 
+## 49. Complete Illustration System
+
+Extends §28a.6's style/coverage list into the constraints an illustrator needs to draw a *consistent set*, not just a correct-in-isolation one-off per screen.
+
+### 49.1 Grid & Perspective
+
+All illustrations are drawn on a 320×240dp artboard (a 4:3 canvas that comfortably fits above an Empty State's copy block, §45.9, on the smallest supported screen width, §53.1) at a flat, front-facing/orthographic perspective — no vanishing-point perspective, no isometric angle. This keeps every illustration optically consistent with the equally-flat icon system (§46) and avoids the production cost of maintaining a consistent vanishing point across a growing illustration set.
+
+### 49.2 Stroke, Color & Line Weight
+
+Single-weight 2dp stroke (`stroke-icon` token, §44.5 — the same weight as the icon and logo systems, §46.2/§47.1), rounded joins/caps, no fills except: (a) the semantic-status accent fills called out per illustration below, and (b) flat Primary-Container/Secondary-Container tint fills used sparingly as a background shape *within* the illustration (e.g. a rounded rectangle representing a garment) — never a full-artboard background wash, since the illustration always sits on a flat Surface (§44.6, `opacity-illustration-bg`). Line color is On-Surface-Variant at 100% (not full On-Surface — a touch softer, so illustrations read as supportive rather than as high-contrast UI chrome).
+
+### 49.3 Character Design & Body Diversity
+
+Where a human figure appears (Profile Body Photo capture guide overlay only, per §28a.6 — no other illustration in this set includes a figure), the figure is faceless and silhouette-abstracted per §28a.6, and the illustration set ships **three body-shape variants** (slim, average, plus-size) with **two stance variants** each (arms-at-sides, arms-slightly-out per the actual capture-guide pose) — six total silhouette assets, cycled by a stable per-profile hash (not random-per-render, so a given profile always sees the same guide silhouette rather than one that changes every time they open the capture screen) so no single body type is presented as the sole "default."
+
+### 49.4 Lighting & Shadow
+
+No cast shadows or gradients anywhere in the illustration set (matches §47.4's "no drop shadow/bevel" rule for the logo, applied consistently to illustrations) — flatness is a deliberate systemic choice, not a per-asset omission. The one exception is the Profile Body Photo capture guide's silhouette, which uses a single flat 8%-opacity On-Surface fill *behind* the outline to suggest volume without introducing directional lighting.
+
+### 49.5 Illustration Inventory
+
+| Illustration | Category | Contains a figure? | Accent color used |
+|---|---|---|---|
+| `il_empty_wardrobe` | Empty state | No (a single hanger + dashed outline, echoing the logomark motif, §47.1) | Primary-Container fill accent |
+| `il_empty_planner` | Empty state | No (a calendar page with a soft check mark) | Primary-Container fill accent |
+| `il_empty_favorites` | Empty state | No (an outlined heart, matching the `favorite` symbol, §28a.5, at illustration scale) | Tertiary-Container fill accent |
+| `il_empty_outfit_builder` | Empty state | No (an outlined hanger + arrow pointing toward a "Wardrobe" chip shape) | Secondary-Container fill accent |
+| `il_stats_all_caught_up` | Success | No (a checklist with every row checked) | Worn/Success token fill accent (§28a.3) |
+| `il_onboarding_privacy` | Onboarding/Privacy | No (a phone silhouette with a shield, echoing the Backup/Restore custom icon motif, §28a.5) | Primary-Container fill accent |
+| `il_onboarding_profiles` | Onboarding | No (up to 4 abstract avatar-circle shapes) | Secondary-Container fill accent |
+| `il_bodyphoto_guide_{shape}_{stance}` (×6) | Try-On | Yes (§49.3) | No fill accent — outline + 8% volume-suggestion fill only |
+| `il_error_generic` | Error | No (a bent/wilted version of the hanger motif) | Error token fill accent |
+| `il_backup_encrypted` | Privacy | No (the crossed-cloud + shield custom icon, §28a.5, at illustration scale with added compositional elements) | Primary-Container fill accent |
+
+Every empty-state illustration deliberately reuses a visual motif from the icon system (hanger, heart, shield) rather than inventing unrelated iconography, so the illustration and icon systems read as one family rather than two art directions.
+
+## 50. Microinteraction Specification
+
+§28a.7 established the motion *principles* (durations, reduced-motion handling, the restrained/non-gamified tone). This section is the exhaustive per-interaction table those principles apply to — every animated moment in the app, with its trigger, duration/curve token (§44.13), and interruption behavior.
+
+| Interaction | Trigger | Duration/curve | Completion behavior | Interruption behavior |
+|---|---|---|---|---|
+| Button press | Touch down/up on any Button/Icon Button | `duration-short-2` state-layer fade | Ripple fully fades post-release | Re-tappable immediately; no debounce beyond the native double-tap gap |
+| Favorite toggle | Tap favorite Icon Button | `duration-short-3` fill + spring bounce (damping 12/stiffness 400) overshoot to 1.15× then settle | Icon holds filled/outlined state, haptic tick fires at fill-start (§51) | Rapid re-taps cancel the in-flight spring and restart from current value (Reanimated's default interruptible spring behavior) — never queues multiple bounces |
+| Profile switch | Tap a Profile Card | `duration-medium-2` cross-fade of the whole screen content (old profile's Home fades out, new profile's Home fades in) | Redux store's active-profile slice reset, SQLite connection swapped (§19/§20) before fade-in begins, so no stale data ever flashes | N/A — navigation-blocking during the swap; a second tap during the transition is ignored |
+| PIN unlock (success) | Correct PIN digit sequence entered | Dots fill sequentially `duration-short-1` each, final digit triggers `duration-medium-1` screen transition into the profile | Haptic success (§51), auto-navigates | N/A |
+| PIN unlock (failure) | Incorrect PIN entered | Shake: ±4dp horizontal, 3 cycles @ `duration-short-3` each | Dots clear after shake completes | A new digit typed mid-shake is ignored until the shake finishes, preventing a garbled half-shaken state |
+| Background removal (processing) | User confirms crop | Indeterminate Progress Indicator (§45.8) for the pipeline's duration | Cross-fades `duration-medium-1` into the Before/After Background Removal Review result | Cancel button (if the pipeline exceeds ~5s, an escape hatch appears) aborts the native call and returns to Crop |
+| Camera capture (shutter) | Shutter button tap | Flash-frame: full-white `duration-short-1` flash + shutter-button scale-down/up spring | Captured frame freezes in place before transitioning to Crop | N/A (capture is a single atomic native call) |
+| Crop confirm | "Done" on Crop Overlay | `duration-short-4` cross-fade to Background Removal Review | — | — |
+| Save (item/outfit/settings) | "Save" button tap | Button shows an inline spinner replacing its label for the DB-write duration (typically <50ms, so this is rarely visible in practice) then a `duration-short-2` checkmark flash before navigating back | Snackbar confirmation on the prior screen ("Item saved") | A second Save tap while the first is in flight is disabled (button enters its disabled visual state immediately on first tap) |
+| Delete | Confirmation Dialog's destructive action tapped | Item/card `duration-medium-1` shrink-and-fade out of its list/grid position, remaining items reflow with a `duration-medium-1` layout animation (Reanimated `Layout` transition) | Snackbar with "Undo" appears (§45.6) | Tapping Undo within the Snackbar's window reverses the reflow and restores the row |
+| Undo | "Undo" tapped on a delete Snackbar | Reverse of the Delete reflow, `duration-medium-1` | Snackbar dismisses immediately | N/A |
+| Planner mark worn | "Mark Worn" toggle on Planner Entry Detail | Checkmark `duration-short-3` scale-in (0→1.1→1.0 spring) + single haptic tick (§51, §28a.7) | Badge updates to the Worn token fill (§28a.3) | Re-toggling before the animation settles restarts from current interpolated value, same interruptible-spring pattern as Favorite |
+| Calendar date selection | Tap a Calendar Cell | `duration-short-2` background-fill fade to the selection ring | Opens Planner Entry Detail | N/A |
+| FAB press | Tap FAB | Scale to 0.94 spring, `elevation-3`→`elevation-4` | Releases to trigger navigation/sheet | N/A |
+| Bottom navigation switch | Tap an inactive tab | Icon outline→filled swap instant (no animated morph — a cross-fade between two different glyphs reads as flicker at 24dp, so this is a hard cut, deliberately excluded from the spring/fade treatment everything else gets), content area `duration-medium-3` cross-fade | New tab's content mounted (or resumed via React Navigation's tab-freeze behavior) | Rapid tab-tapping is allowed to interrupt an in-flight content cross-fade freely — tabs must feel instantly responsive |
+| Screen transition (push) | Any forward navigation | `duration-medium-2` emphasized-decelerate slide-from-right (standard Android/React Navigation native-stack transition) | New screen interactive | Android back-gesture can interrupt mid-transition; React Navigation's native-stack handles this via the platform's own predictive-back API (API 33+, available given `minSdkVersion 31`+targetSdk, with a graceful non-predictive fallback below 33) |
+| Modal/Dialog open | Any Dialog trigger | `duration-medium-1` scale-and-fade-in, scrim fades in concurrently | Focus moves to the Dialog for TalkBack (§28) | Back button/scrim-tap triggers the exit animation immediately, cancelling any in-flight enter animation |
+| Bottom sheet open/close | Filter panel, Image Picker | `duration-medium-2` slide, drag-interruptible (§45.6) | Sheet fully expanded/dismissed | Drag gesture takes priority over the programmatic animation at any point |
+| Try-On layer drag | Finger drag on a Try-On Layer | 1:1 gesture-driven, no fixed duration (Reanimated shared values, §19) | Layer position commits to local state on release | A new touch mid-drag is ignored until the current gesture's `onEnd` fires (single-pointer drag priority, §57.5) |
+| Try-On layer scale/rotate | Two-finger pinch/rotate on a Try-On Layer | 1:1 gesture-driven | Commits on release | Switching from one-finger drag to two-finger scale mid-gesture is handled by Gesture Handler's simultaneous-recognizer config (§57.5) |
+| Try-On snapping | Layer dragged within 6dp of an alignment guide (§57.6) | `duration-short-1` snap-assist nudge | Layer aligns to the guide, guide line flashes briefly | Continued drag past the snap threshold releases the snap immediately, no lag |
+| Loading (generic) | Any operation crossing the ~150ms threshold (§27) | N/A (indeterminate, held for the operation's real duration) | Replaced by content or an Error Dialog | — |
+| Error | Any native-module rejection (§23) | `duration-medium-1` Error Dialog enter | User dismisses/retries | — |
+| Success (Backup) | Export/restore completes | `duration-medium-1` Success Dialog enter, checkmark `duration-short-3` scale-in inside it | User dismisses | — |
+| Backup (in progress) | Export/restore running | Determinate progress (§45.9), no fixed duration | Transitions to Success/Error Dialog | Cancel button aborts the native archive operation cleanly (partial files discarded, matching the all-or-nothing transaction guarantee, §25) |
+| Restore (in progress) | Same as Backup | Same as Backup | Same as Backup | Same as Backup |
+
+Every row above is subject to the §28a.7 reduced-motion substitution (≤50ms/`duration-short-1`) except the three rows already carved out there as direct 1:1 gesture response (Try-On drag/scale/rotate) — those remain full-fidelity regardless of the reduced-motion setting, since removing them would remove the actual functionality, not just decoration.
+
+## 51. Haptic Feedback Specification
+
+Android haptics via `HapticFeedbackConstants`/`VibrationEffect` (API 31+, so `VibrationEffect.Composition` primitives are available on every target device, §8 — no legacy `vibrate(ms)` fallback needed). All haptic calls are routed through a single `useHaptic()` hook (`src/shared/hooks/`, §17) rather than scattered native calls, so the on/off Settings toggle below (§51's last row) has one enforcement point.
+
+| Event | Type | Strength/primitive | Duration | Trigger |
+|---|---|---|---|---|
+| Delete | `VibrationEffect.EFFECT_TICK` | Light | ~20ms | Confirmation Dialog's destructive action confirmed (§45.9) |
+| Favorite (on) | `VibrationEffect.EFFECT_CLICK` | Light-medium | ~30ms | Favorite Icon Button toggled to filled (§50) |
+| Favorite (off) | None | — | — | Un-favoriting is deliberately silent — the haptic marks the positive "add" action only, not its reversal, keeping the affordance from feeling like a generic on/off switch buzz |
+| Planner mark worn | `VibrationEffect.EFFECT_CLICK` | Light-medium | ~30ms | "Mark Worn" toggle fires (§50), paired with the checkmark scale-in |
+| Planner un-mark worn | `VibrationEffect.EFFECT_TICK` | Light | ~20ms | Un-marking back to "planned" — lighter than the marking action itself, since it's a correction, not a milestone |
+| Save (item/outfit/settings) | `VibrationEffect.EFFECT_TICK` | Light | ~20ms | On successful DB write, coincides with the checkmark flash (§50) — omitted entirely on validation failure (no haptic on error paths that aren't a hard native-module failure) |
+| Try-On layer snap | `VibrationEffect.EFFECT_TICK` | Very light | ~15ms | Alignment-guide snap engages (§50, §57.6) — deliberately the lightest haptic in the table, since it can fire repeatedly during a single drag gesture and must never feel like buzzing |
+| Try-On save | `VibrationEffect.EFFECT_CLICK` | Light-medium | ~30ms | Final composited preview saved (FR-27) |
+| PIN success | `VibrationEffect.EFFECT_DOUBLE_CLICK` | Medium | ~40ms (two pulses) | Correct PIN sequence completes (§50) |
+| PIN failure | `VibrationEffect.EFFECT_HEAVY_CLICK` composed with the shake animation | Medium-strong | ~50ms | Incorrect PIN, synchronized to the shake's start frame (§45.5, §50) |
+| Biometric success | Handled by `BiometricPrompt`'s own system-level haptic (not app-triggered) | OS-default | OS-default | AndroidX Biometric already provides consistent OS haptic feedback on success; this app does not duplicate it with a second app-level buzz |
+| Biometric failure | Handled by `BiometricPrompt`'s own system-level haptic (not app-triggered) | OS-default | OS-default | Same rationale — the system dialog owns its own feedback loop |
+| Category delete blocked | None | — | — | A blocked action (FR-8) is a Confirmation/inline-message state, not a completed one — no haptic, since nothing actually happened |
+
+**Global toggle**: a single Settings row ("Haptic feedback," default **on**) disables every row above at once via the `useHaptic()` hook's internal early-return — there is no per-interaction granularity, since a mixed on/off haptic experience would be more confusing than either extreme. This respects the same category of user preference as reduced-motion (§28a.7) even though Android has no OS-level "reduce haptics" signal equivalent to `AccessibilityInfo.isReduceMotionEnabled()` to read automatically.
+
+## 52. Sound Specification
+
+Optional UI sounds, **disabled by default** — this app's tone (§28a.1: "quiet," "confident," not gamified) treats sound as an opt-in enhancement, not a baseline expectation, and a shared household device (§4 persona) makes an always-on chime set actively unwelcome by default.
+
+| Event | Sound | Notes |
+|---|---|---|
+| Success (generic save) | Short single soft "pop," ~150ms | Plays only if the Settings sound toggle is on |
+| Failure/Error | Short low double-tone, ~200ms | Distinct enough from Success to be identifiable without looking at the screen, still restrained (no harsh buzzer) |
+| Capture (camera shutter) | Standard Android camera shutter click | Uses the OS `MediaActionSound.SHUTTER_CLICK` system sound rather than a custom asset — in several regions/carrier configurations a shutter sound is mandatory and cannot be silenced by the app regardless of this app's own toggle; implementing it via the system API rather than a bundled asset ensures this legal requirement is respected automatically per-device rather than needing region detection logic in this app |
+| Complete (backup/restore) | Same soft "pop" as generic Success | Reused rather than a bespoke asset — no per-feature sound proliferation |
+| Restore | Same as Complete | — |
+| Backup | Same as Complete | — |
+| Notification | N/A | No notifications are sent in v1 (§33, §48.7) |
+
+**Default state**: off, toggled on via a single Settings row ("Sound effects," default **off**) — the inverse default of the Haptics toggle (§51, default on), since haptics are private-to-the-holder while sound is audible to everyone nearby, including other household members (§4) who haven't opted in.
+
+**Accessibility considerations**: sound is never the sole carrier of any state change — every sound-paired event already has a haptic (§51) and/or a visual change (§50) as the primary signal, so a user with the sound toggle off, a hearing impairment, or a muted device misses nothing functional. No sound in this table is speech/voice, avoiding any TalkBack/screen-reader audio-channel conflict.
+
+## 53. Complete Responsive Layout Specification
+
+Extends §28's "both orientations supported" commitment and §8's flagship-device target into concrete breakpoints, since neither previously named an actual width value.
+
+### 53.1 Phone Portrait (baseline)
+
+Reference width 360–430dp (covers the common flagship range at `minSdkVersion 31`+, §8). `grid-columns-phone-portrait` = 2 (§44.11), `grid-margin` = 16dp, single-column forms, Bottom Navigation visible, Top App Bar 64dp.
+
+### 53.2 Phone Landscape
+
+Triggered at runtime via `useWindowDimensions` width > height, not a manifest-locked orientation (§28 requires both orientations supported, not one preferred). `grid-columns-phone-landscape` = 3 (§44.11). Camera/Crop/Try-On screens (the three explicitly called out in §28 as needing explicit layout handling) reflow their control bars from bottom-docked to a side rail on the trailing edge, so the live camera/canvas viewport isn't squeezed vertically. Bottom Navigation remains bottom-docked (not side-docked) even in landscape, since Navigation Rail (§45.3) is explicitly a tablet-only future pattern, not a phone-landscape one.
+
+### 53.3 Tablet
+
+Breakpoint: shortest-side width ≥ 600dp (Android's own `sw600dp` convention). `grid-columns-tablet` = 4 (§44.11). Dialogs cap at 560dp max-width (§45.6) rather than stretching edge-to-edge. Per §31 Future Roadmap, tablet gets only *this* baseline responsive treatment in v1 (wider grids, capped dialog width) — the full list+detail multi-pane layout and Navigation Rail are the explicitly deferred v2 tablet work, not conflated with the v1 responsive minimums specified here.
+
+### 53.4 Foldables
+
+Two states via Android's `WindowManager` `FoldingFeature` API: **folded** (cover-screen or book-mode narrow width) treated identically to Phone Portrait (§53.1); **unfolded** treated identically to Tablet (§53.3) once shortest-side crosses the 600dp breakpoint, with one addition — a `FoldingFeature` hinge reported as an obstruction (book-mode fold) is queried and any modal (Dialog/Bottom Sheet) is kept centered within one half rather than straddling the hinge, using `WindowInfoTracker` (Jetpack WindowManager, added to the Dependency Plan, §40 addendum below) to read the hinge geometry. Continuous-fold transitions (mid-unfold drag) are not specially animated — the layout simply re-measures at the next `useWindowDimensions` change, same as a rotation.
+
+### 53.5 Safe Areas, Insets & System Bars
+
+`react-native-safe-area-context` (§40) is the single source of truth for all inset math — no hardcoded status-bar/nav-bar height constants anywhere in the codebase. Status bar: edge-to-edge content by default (Android 15+ mandatory edge-to-edge, so this is required, not optional, at `targetSdkVersion 36`, §8) with the Top App Bar's background extending under the status bar and its content padded by `insets.top`. Navigation bar: gesture-nav (3-button or gesture pill) inset is added to `bottom-nav-height` (§44.12) rather than baked into the fixed 80dp token, so the token stays a pure content-height value and the inset is always applied as a separate padding layer.
+
+### 53.6 Keyboard
+
+`react-native-keyboard-controller`-equivalent behavior (handled via RN's built-in `KeyboardAvoidingView` + `react-native-safe-area-context`, no new dependency needed) on every text-input-bearing screen (Item Metadata Form, PIN setup, backup passphrase, outfit naming). The PIN Entry screen (§45.5) is the one exception — since it renders a custom in-app keypad rather than the system IME, there is no keyboard-avoidance concern there at all.
+
+### 53.7 Orientation Behavior Matrix
+
+| Screen class | Portrait | Landscape |
+|---|---|---|
+| Grids/lists (Wardrobe, Favorites, Statistics) | 2-column | 3-column, Bottom Nav unchanged |
+| Forms (Metadata Form, Create/Edit Profile) | Single column, full-width fields | Single column still (no side-by-side fields — a form doesn't benefit from width the way a grid does), just re-centered with extra horizontal margin |
+| Camera/Crop/Try-On Canvas | Bottom-docked control bar | Trailing-edge side rail control bar (§53.2) |
+| Calendar | 7-column grid, taller cells | 7-column grid, shorter cells (width-constrained, not column-count-constrained) |
+
+### 53.8 Minimum & Maximum Widths, Margins
+
+| Token | Value |
+|---|---|
+| `layout-min-width` | 320dp (smallest Android width this app supports rendering correctly, below the `minSdkVersion 31` device population's realistic floor but kept as a hard defensive minimum) |
+| `layout-max-content-width` | 840dp — on very wide tablet/foldable-unfolded layouts, content (forms, dialogs, single-column screens) centers within this cap rather than stretching edge-to-edge; only true grids (§44.11) use the full available width |
+| `grid-margin` | 16dp phone, 24dp tablet (§53.3) |
+
+**Dependency Plan addendum**: Jetpack WindowManager (`androidx.window:window`, Kotlin, native-module-exposed) is added for foldable hinge detection (§53.4) — the one new dependency this section introduces beyond §40's existing list, bridged the same way the other native-only concerns are (a small TurboModule under `nativemodules/`, §22).
+
+## 54. Screen-by-Screen Visual Specification
+
+Applies §44's tokens and §45's components concretely to each of the 22 screens in §13, filling the gap between §14's element list and an actual layout. Screens whose layout is already fully implied by a single dominant component (e.g. Backup/Restore is just a list of Settings-style rows) are given a shorter entry; screens with genuine layout complexity (Wardrobe Grid, Try-On Canvas) get the full treatment.
+
+### 54.1 Biometric Gate
+
+Full-bleed Surface background, logomark (icon-only, §47.8) vertically centered at `icon-illustration`/96dp, `space-lg` below it a Body Medium prompt ("Unlock WardrobeAI"), system `BiometricPrompt` invoked automatically on mount (no manual "Unlock" button needed — the prompt is modal and system-owned). No header/footer chrome. Loading state: N/A (the OS dialog is the only state). Error state: failed/cancelled biometric shows a Text Button "Try Again" beneath the prompt copy, re-invoking `BiometricPrompt`. No animation beyond the standard system prompt transition.
+
+### 54.2 Profile Selection
+
+`grid-margin`/16dp, Profile Cards (§45.2) in a 2-column grid (`grid-columns-phone-portrait`, up to 4 cards + a 5th "Add Profile" affordance rendered `disabled-*` once 4 profiles exist). Header: Top App Bar with the icon+wordmark lockup (§47.8) as title, no back action (root screen). No footer. Empty state: on true first-run (zero profiles) the grid is replaced by a single centered "Add Profile" Filled Button + `il_onboarding_profiles` illustration (§49.5). Loading: N/A (profile registry read is synchronous MMKV/`app_meta.db`, §15/§20, well under the 150ms threshold, §27). Animation: cards `duration-medium-1` fade-and-scale-in on mount, staggered 30ms per card.
+
+### 54.3 Profile PIN Entry / Setup
+
+Centered PIN Entry component (§45.5), profile avatar (§44.8, `avatar-lg`) + name above it, "Forgot PIN" Text Button below (Entry mode only — Setup mode shows a "Skip" Text Button instead, since a PIN is opt-in per FR-4a). No grid/list layout at all — this is a single-purpose, centered, low-chrome screen matching the Biometric Gate's minimal-chrome pattern (§54.1) since both are security surfaces.
+
+### 54.4 Create / Edit Profile
+
+Single-column form: `avatar-xl`/96dp avatar preview + edit-overlay Icon Button (camera/gallery picker for a custom avatar image, falling back to a color-swatch picker if no photo is set — FR-1's "avatar/color" choice), Text Field for name, PIN setup toggle (expands a PIN Entry component inline when enabled), Filled Button "Save" pinned above the keyboard (§53.6). Edit mode adds a destructive Text Button "Delete Profile" below Save, opening a Confirmation Dialog (§45.9).
+
+### 54.5 Home Dashboard
+
+Vertically stacked sections (`space-lg` between): a hero Statistic-Card-style "Today's planned outfit" panel (Outfit Card thumbnail + an Assist Chip "Try On now" if a Profile Body Photo already exists, else "Set up Try-On" routing to Profile Body Photo Capture), then a Section Header "Quick actions" with two side-by-side Tonal Buttons (Add Item, Try-On), then a Section Header "Recent activity" horizontal-scroll row of the last 5 added Wardrobe Cards. Empty state: no planned outfit today collapses the hero panel to a shorter "Nothing planned for today" Assist Chip linking to Planner, rather than an empty illustration (this is a partial, not a full, empty state — the rest of Home still has content).
+
+### 54.6 Wardrobe Grid
+
+Header: Top App Bar collapsing into the Search Field on tap (§45.4), Filter Chip row (§45.7) beneath it, horizontally scrollable. Body: `grid-columns-phone-portrait`/2 (phone) or `-landscape`/3 or `-tablet`/4 (§44.11) grid of Wardrobe Cards (§45.2), `grid-gutter`/8dp, `grid-margin`/16dp. Footer: none (FAB floats bottom-trailing, `space-base` inset from both edges). Empty state: `il_empty_wardrobe` (§49.5) + "Add your first item" Filled Button, replacing the grid entirely. Loading state: Skeleton Loader grid (§45.8) matching the current column count, shown only on first SQLite hydration per session. Error state: not applicable at the query level (a local SQLite read has no meaningful failure mode surfaced to the user); a corrupt-DB scenario is handled at the app-boot level, not per-screen.
+
+### 54.7 Item Capture (Camera)
+
+Full-bleed Camera Overlay (§45.10) — see §55 for the complete camera UX spec (guide overlay, permissions, countdown, retake, gallery-import fallback).
+
+### 54.8 Item Crop
+
+Full-bleed Crop Overlay (§45.10) — see §55.5.
+
+### 54.9 Background Removal Review
+
+Centered image panel (Before/After toggle, a segmented Tonal Button pair, not a slider — see §56.4 for why this screen uses a toggle while the comparison slider pattern is reserved elsewhere), `space-lg` below it two actions: Text Button "Retry" (re-runs the matting pipeline, FR-7) and Filled Button "Use This" (accepts, proceeds to Metadata Form). Loading state: Progress Indicator replaces the image panel entirely while the native matting call is in flight (§45.8, §56.1).
+
+### 54.10 Item Metadata Form
+
+Single-column Text Fields (name, brand, color, size) + Dropdowns (category, season) + a Tag Chip input row (add/remove, §45.7), thumbnail preview of the accepted cutout pinned at top. Filled Button "Save" above the keyboard (§53.6). Validation: required-field errors render inline beneath the offending Text Field (Error-colored caption, no blocking dialog) — a Save tap with invalid fields never fires the DB write, and focus jumps to the first invalid field.
+
+### 54.11 Item Detail
+
+Hero cutout image (edge-to-edge width, `radius-none` since it's the dominant visual, not a card), favorite Icon Button overlaying its corner, metadata rendered as a compact key-value list (List Item rows, §45.2) below, wear-count Statistic-Card-style callout, Filled Button "Edit" + Text Button "Delete" pinned at the bottom.
+
+### 54.12 Category Management
+
+Plain List Item (§45.2) rows with drag handles (reorder, FR-8), rename-in-place on tap (Text Field replaces the label), overflow-menu Delete per row (rendered `disabled-*` when item count > 0, §45.2). "Add Category" row pinned at the list's end, not a FAB (this is a management list, not a primary-content grid).
+
+### 54.13 Outfit Builder
+
+Category "slots" rendered as a vertical stack of Card-base drop targets (one per relevant category, dynamically shown based on what the household's categories are — FR-8), each slot either empty (`disabled-*` dashed-outline placeholder + "Add" Text Button opening an item picker Bottom Sheet) or filled (a mini Wardrobe-Card-style thumbnail with a swap/remove overlay). Filled Button "Save Outfit" pinned at bottom, disabled until at least one slot is filled. Empty-wardrobe state: `il_empty_outfit_builder` (§49.5) replaces the whole slot stack (§28a.6).
+
+### 54.14 Outfit Detail
+
+Flat-lay composite (the same static template render used on the Outfit Card, §45.2, shown larger), outfit name (editable inline), item list below (tap-through to each Item Detail), Filled Button "Try On" (routes to Virtual Try-On Canvas per FR-14), favorite toggle, overflow-menu Edit/Delete.
+
+### 54.15 Planner Calendar
+
+Standard 7-column month grid of Calendar Cells (§45.2), month-navigation chevrons + month/year label in the Top App Bar, "today" jump Text Button in the app bar's trailing slot. Tapping any cell opens Planner Entry Detail (existing entry) or a creation Bottom Sheet (empty date: choose outfit vs. single item, per FR-15's mutual-exclusivity rule).
+
+### 54.16 Planner Entry Detail
+
+Assigned outfit/item shown as its Card variant, status Chip (Worn/Planned/Skipped tokens, §28a.3) prominent near the top, "Mark Worn"/"Un-mark" toggle (Tonal Button), optional notes Text Field, destructive "Remove Entry" Text Button.
+
+### 54.17 Profile Body Photo Capture
+
+Full-bleed Camera Overlay with the full-body framing guide variant (§45.10, §55.2) — see §55 for complete spec, including the body-diversity guide silhouette set (§49.3).
+
+### 54.18 Virtual Try-On Canvas
+
+Full spec in §57. Layout summary: Profile Body Photo fills the canvas, garment Try-On Layers (§45.11) overlaid, a bottom control strip (Undo/Redo/Save/Discard, layer-select thumbnails if multiple garments), no Top App Bar chrome beyond a minimal back action (maximize canvas real estate, matching Camera Overlay's translucent-bar pattern, §45.10).
+
+### 54.19 Favorites
+
+Two Tab-bar sub-views ("Items" / "Outfits", a segmented control just below the Top App Bar), each reusing the exact Wardrobe Grid / Outfit Builder-picker grid layouts respectively (§54.6) filtered to `is_favorite = 1` (§15). Empty state: `il_empty_favorites` (§49.5) per tab independently — a user can have favorited items but no favorited outfits, and each tab reflects that on its own.
+
+### 54.20 Statistics Dashboard
+
+Top summary row of Statistic Cards (horizontal scroll: total items, most-worn, never-worn count), category-breakdown bar chart below (a simple horizontal-bar Reanimated-driven chart, Primary-colored bars, Label Large category names, tabular-figure counts per §28a.4), never-worn item list at the bottom (Wardrobe Card grid, filtered). Empty state (all items worn at least once): `il_stats_all_caught_up` (§49.5) replaces only the never-worn list section, framed positively per §28a.1's tone rule, not the whole dashboard.
+
+### 54.21 Settings
+
+Plain List Item rows grouped under Section Headers ("Appearance," "Security," "Data," "About"): Dark Mode segmented control, biometric timeout Dropdown, Haptics/Sound toggles (§51/§52), Backup/Restore entry row, About row (opens the icon+wordmark lockup, §47.8, version number, licenses).
+
+### 54.22 Backup / Restore
+
+Export section: profile-scope Dropdown (current profile / all profiles), "Export Backup" Filled Button opening the passphrase Password-Field-variant Dialog (§45.5/§45.6), then the Backup Progress Dialog (§45.9) during the operation. Restore section: "Restore Backup" Filled Button opening SAF's file picker, then the passphrase Dialog, then Backup Progress Dialog, ending in Success or Error Dialog (§45.9). Last-backup timestamp shown as a Body Medium caption beneath the Export section.
+
+## 55. Camera UX Specification
+
+Covers both camera call sites (Item Capture, FR-5; Profile Body Photo Capture, FR-23) via one Camera Overlay component (§45.10) with mode-specific guide content.
+
+### 55.1 Camera Guide (Item Capture mode)
+
+A centered dashed-outline rectangle guide (matching the background-removal cutout icon's dashed motif, §28a.5) sized to a 1:1 safe area (matching the Wardrobe Card's fixed crop aspect, §45.2), with a Body Medium hint ("Center the item within the frame") that fades out (`duration-medium-1`) 2 seconds after the camera preview starts, so it doesn't permanently obscure the live preview.
+
+### 55.2 Body Framing Guide (Profile Body Photo Capture mode)
+
+Full-height dashed silhouette guide (one of the six body-shape/stance variants, §49.3, matching the *current profile's* previously-selected variant if this is a retake, or the hash-selected default on first capture) positioned to suggest standing distance/framing, with a Body Medium hint ("Stand so your whole body fits the guide"). Unlike the Item Capture guide, this one does not auto-fade — full-body framing benefits from a persistent reference the whole time the user is positioning themselves.
+
+### 55.3 Lighting Hints
+
+A lightweight on-device luminance check (mean frame brightness sampled from the Vision Camera frame processor, §40 — no ML model needed, just a pixel-average threshold) triggers an inline banner ("Try moving to better light") when mean luminance falls below a fixed threshold for >1 continuous second, auto-dismissing once luminance recovers. This is advisory only — never blocks capture.
+
+### 55.4 Blur Detection
+
+A Laplacian-variance sharpness check (OpenCV, already a bundled dependency for compositing, §21) runs on the captured frame *after* the shutter fires, before transitioning to Crop — if variance falls below an empirically-set threshold (tuned during the Phase 4 spike, §32/§36, not hardcoded speculatively here), a non-blocking inline prompt offers "This looks blurry — Retake?" with both "Retake" and "Use Anyway" actions, never forcing a retake.
+
+### 55.5 Camera Permissions
+
+Standard Android runtime `CAMERA` permission request, requested lazily at first Item Capture or Profile Body Photo Capture attempt (never at app launch) via Vision Camera's permission API. Denial shows an inline empty-state-style panel ("Camera access is needed to add photos" + a "Gallery" fallback action + an "Open Settings" Text Button deep-linking to the app's OS permission page) rather than a dead end — the Gallery import path (§55.7) remains fully available even with camera permission permanently denied.
+
+### 55.6 Capture Countdown
+
+Not used for Item Capture (instant shutter, hand-held object framing doesn't benefit from a delay). Used for Profile Body Photo Capture only: a 3-second countdown (large Display Small numeral, §28a.4, counting down centered over the guide) triggered by a "Start" Filled Button rather than the shutter firing instantly, since a full-body self-capture needs the user to step back from the device after tapping capture.
+
+### 55.7 Retake Flow
+
+Both capture modes show a Before-committing review step (Item Capture routes straight to Crop, which itself has a "Retake" path back to Camera Overlay; Profile Body Photo Capture shows a dedicated confirm/retake choice before pose-landmark recomputation begins, since that recomputation is the expensive step FR-23 explicitly calls out as invalidated on retake).
+
+### 55.8 Gallery Import Flow
+
+Reachable both as a fallback (denied camera permission, §55.5) and as a first-class equal choice from the Image Picker sheet (§45.10) — Android's system Photo Picker (`ACTION_PICK_IMAGES`, no storage-permission grant required, available at `minSdkVersion 31`+) is used rather than a full `READ_MEDIA_IMAGES` permission request, since the Photo Picker's per-selection scoped access is both a better privacy posture (fewer permissions requested overall, reinforcing §26/§30's "no data collected" story) and less friction for the user. Selected images proceed straight to Crop, same as a fresh capture.
+
+### 55.9 Cropping UX & Gesture Behavior
+
+Handled by the native Crop Overlay (§45.10): pinch-to-zoom and single-finger pan within the crop bounds, corner/edge drag handles to resize the crop rectangle, aspect-ratio presets shown as a horizontal Assist Chip row above the crop canvas (1:1 for Item Capture, matching the Wardrobe Card aspect; free-form/3:4 for Profile Body Photo Capture, matching a natural full-body framing) — the preset relevant to the current capture mode is pre-selected, and switching presets is not offered on the Profile Body Photo path (a full-body photo cropped to 1:1 would defeat the pose-landmark detection's need for the whole body in frame, so this isn't a meaningful user choice to expose).
+
+## 56. Image Processing UX
+
+Covers the two CV waits already budgeted at NFR-3/NFR-3a and flagged in §28a.9 as needing a defined visual treatment, plus the recovery/comparison UX around them.
+
+### 56.1 Progress UI
+
+Both background removal (FR-7) and try-on compositing (FR-25) use the full-screen Progress Indicator pattern from §28a.9/§45.8 — an indeterminate spinner, since neither pipeline can report meaningful intermediate progress (they are single opaque native-module calls, §22, not a multi-step operation with real percentages to surface). A status caption rotates through generic-but-honest copy ("Detecting your pose…" → "Preparing garments…" → "Compositing…") timed to the pipeline's *expected* stage boundaries (instrumented during the Phase 4 spike, §32) purely as a perceived-wait aid — it is cosmetic pacing, not a true progress signal, and never blocks or gates on those internal stages actually completing.
+
+### 56.2 Cancel Behavior
+
+A "Cancel" Text Button appears on both waits after a 2-second grace period (avoiding a jarring flash-of-cancel-button on the common fast-path). Cancelling aborts the in-flight native-module Promise (a `cancellationSignal`-style token passed into the TurboModule call, checked at safe points inside the Kotlin coroutine, §22) and returns to the prior screen (Crop, for background removal; Outfit Detail/Try-On tab entry, for compositing) with no partial state committed — matching the same all-or-nothing discipline already established for Backup/Restore (§25).
+
+### 56.3 Retry Behavior
+
+Surfaced two ways depending on outcome: an explicit "Retry" action on the Background Removal Review screen (§54.9) for a *completed-but-unsatisfying* result (not a failure — the pipeline succeeded, the user just wants a different cutout attempt), versus the Error Dialog's "Retry" action (§45.9) for an actual native-module rejection (`SEGMENTATION_FAILED`, `CV_OUT_OF_MEMORY`, §23) on either pipeline. Retrying re-issues the same native call from scratch; it does not attempt to resume or reuse any partial internal state.
+
+### 56.4 Background Removal Preview: Before/After Toggle (Not a Slider)
+
+The Background Removal Review screen (§54.9) uses a segmented Before/After Tonal Button toggle rather than a comparison slider — a deliberate choice: the "after" state here is a full cutout against transparency (checkerboard, §44.6), not a subtle tonal edit, so a slider's partial-reveal metaphor (appropriate for the Try-On before/after case below) would just show a hard seam between "photo" and "checkerboard" at whatever point the slider sits, which communicates nothing useful mid-drag. A binary toggle is the more honest affordance for a binary transformation.
+
+### 56.5 Comparison Slider (Try-On Before/After)
+
+Reserved for a different comparison the Before/After toggle above doesn't cover: on the Virtual Try-On Canvas's result state (post-save), a horizontal drag-handle slider lets the user compare the final composited image against the plain Profile Body Photo underneath it — here a slider *is* the right metaphor, since both states are full photographic images of comparable content (the same body, with/without the outfit), so a wipe-reveal reads naturally rather than showing a seam artifact. Implemented as a masked `Image` clipped by an animated width driven by the slider's Reanimated shared value, handle rendered as a vertical Primary-colored bar with a small drag-affordance Icon Button.
+
+### 56.6 Error Recovery
+
+Every image-processing failure path (§23's typed codes) resolves to exactly one of: the inline "Retry" pattern (§56.3, for the two review-stage cases), the Error Dialog (§45.9, for hard native rejections), or — specifically for `POSE_NO_BODY_DETECTED` — a dedicated recovery panel on the capture screen itself suggesting the concrete fix ("Make sure your whole body is in frame") rather than a generic error, since that failure mode has a single obvious, actionable cause tied directly to the framing guide already on-screen (§55.2).
+
+## 57. Try-On Canvas Design Specification
+
+The most interaction-dense screen in the app; this section is the authoritative gesture/layout spec §54.18 points to.
+
+### 57.1 Layer Controls
+
+Each garment in the active outfit is one Try-On Layer (§45.11). A horizontal thumbnail strip pinned above the bottom control bar lets the user select which layer is "active" (only the active layer shows Gesture Handles, §57.4, at any given time — showing handles on every layer simultaneously would create ambiguous multi-touch targets). Tapping a thumbnail switches the active layer with a `duration-short-2` handle cross-fade (handles fade out on the old layer, in on the new).
+
+### 57.2 Bounding Boxes
+
+The active layer's bounding box is not drawn as a visible rectangle (a visible box reads as a "selection" debugging affordance more than a garment-preview one, at odds with §28a.1's polish bar) — instead, the box is implicit in the Gesture Handle positions (§57.4) themselves, which sit exactly at its four corners.
+
+### 57.3 Selection Handles
+
+Four corner Gesture Handles (§45.11, §44.7 `icon-default`/24dp diameter) for combined scale+rotate (dragging a corner scales uniformly from the layer's center and rotates based on the handle's angular delta simultaneously — a single compound gesture, not two separate modes the user must switch between), plus a center move-handle (invisible hit-area covering the garment's own visible pixels — the garment art itself is the "handle" for pure translation, since requiring a separate drag-in-the-middle icon would clutter the small preview area unnecessarily).
+
+### 57.4 Rotation & Scale Handles
+
+Implemented as the same four corner handles (§57.3), not a separate rotation-only handle — this is a deliberate simplification versus some design tools' twelve-handle (4 scale + 4 rotate + 4 edge) convention, chosen because garment repositioning here is a quick manual nudge after automatic placement (FR-26), not precision graphic design; fewer, combined-gesture handles reduce mis-taps on a phone-sized touch target.
+
+### 57.5 Gesture Priority
+
+Built on React Native Gesture Handler's simultaneous-recognizer composition (§40): a `PanGestureHandler` (center-area drag) and a combined `PinchGestureHandler`+`RotationGestureHandler` (corner-handle drag) are registered as simultaneous recognizers scoped to mutually exclusive hit-areas (center vs. corners, §57.3), so there is no ambiguous case where the same touch could be interpreted as both — priority is resolved by hit-area geometry, not a fallback timeout. A single-pointer touch starting outside any layer's bounding box falls through to the canvas background (no-op — the canvas itself does not pan/zoom, only individual layers do, since the Profile Body Photo is fixed-frame by design, §57.7).
+
+### 57.6 Snapping & Alignment Guides
+
+Anchor-derived guide lines (per-category pose-landmark lines already computed for auto-placement, §21 item 4 — shoulder/hip line for tops, hip/knee for bottoms, ankle line for shoes) render as thin dashed Primary-colored lines *only while a layer is being actively dragged and within 6dp of that line* — never persistently visible, to keep the canvas visually clean for the common case where the user is happy with the automatic placement and never touches it. Snapping applies a `duration-short-1` nudge-to-align (§50) plus the lightest haptic tick (§51) as feedback, and disengages immediately once the drag moves back outside the 6dp threshold.
+
+### 57.7 Layer Ordering
+
+`layer_order` (§15 schema, `outfit_items.layer_order`) sets initial z-order per the category-based convention already established in §21 item 4 (e.g. bottoms under tops, shoes under both). The layer-thumbnail strip (§57.1) supports drag-to-reorder, which updates each layer's render order live and persists back to `layer_order` only on Save (FR-27) — reordering during an active session is pure local/Reanimated state, matching the pattern already set for gesture-transform state (§19).
+
+### 57.8 Undo / Redo
+
+A local (non-persisted) linear history stack of transform snapshots (position/scale/rotation per layer, plus layer-order changes) scoped to the current Try-On session — cleared entirely on navigating away, since only the final Save (FR-27) is meant to persist, matching §19's explicit decision to keep Try-On transform state out of Redux/SQLite until Save. Undo/Redo Icon Buttons sit in the bottom control bar (§54.18), disabled (`disabled-*`, §44.4) at either end of the stack.
+
+### 57.9 Save Flow
+
+"Save" (Filled Button, bottom control bar) triggers the OpenCV final-composite render (§21 item 4) at full resolution (the on-canvas preview may render at a downsampled resolution for 60fps gesture performance, re-compositing at full resolution only on Save — a standard "fast preview, final quality on commit" pattern), shows the brief Save micro-animation (§50), writes `outfits.preview_image_path` (§15) if launched from Outfit Detail, or simply stores the standalone result if launched from the Try-On tab directly on a single item (FR-25). "Discard" (Text Button, adjacent) exits without writing anything, no confirmation dialog needed since nothing is destroyed that wasn't already ephemeral session state.
+
+## 58. Theme Implementation Guide
+
+Ties §28a.3's tokens, §28a.8's file locations, and §44's expanded token set into one concrete implementation path.
+
+### 58.1 React Native Paper Integration
+
+`PaperProvider` wraps the navigation root (`src/app/navigation`, §17), receiving a theme object built by merging `MD3LightTheme`/`MD3DarkTheme` (Paper's own defaults, for any role this spec hasn't explicitly overridden) with this project's color tokens (§28a.3) and font config (§28a.4 via `configureFonts`). Active theme (light/dark/system) is read from the Redux settings slice (§19) and MMKV-persisted (§20), never recomputed from `Appearance.getColorScheme()` directly inside components — a single `useAppTheme()` hook is the only read path, so a future token change touches one file.
+
+### 58.2 Theme File Structure
+
+```
+src/app/theme/
+  tokens.ts        # §44 — spacing, radius, elevation, duration, z-index, etc.
+  colors.light.ts   # §28a.3 light role table
+  colors.dark.ts    # §28a.3 dark role table
+  statusColors.ts   # §28a.3 semantic Worn/Planned/Skipped tokens (shared, not light/dark-split — already theme-aware per-value)
+  typography.ts     # §28a.4 role→Inter weight/size map
+  light.ts           # assembles MD3LightTheme + colors.light + typography + tokens
+  dark.ts            # assembles MD3DarkTheme + colors.dark + typography + tokens
+  index.ts           # useAppTheme() hook, ThemeProvider wiring
+```
+
+### 58.3 Design Token Mapping
+
+Every token in §44 is exported as a plain TypeScript `const` object (not CSS custom properties — RN has no CSS layer), typed via a single `Tokens` interface so autocomplete surfaces valid token names at every call site and a typo (`spaceBase` vs. the correct `spaceBase`) fails at compile time rather than silently falling back to `undefined` styles.
+
+### 58.4 Dynamic Color / Material You Support
+
+Android 12+ dynamic color (wallpaper-derived Material You palette) is **not** used for the app's primary theme — this app's brand color (§28a.2/§28a.3) is deliberately fixed rather than user-wallpaper-derived, since a consistent brand identity across every install is part of the "confident, minimal" tone (§28a.1) and a wallpaper-derived palette could accidentally produce a poor-contrast or off-brand combination on some devices. Dynamic color is used in exactly the one place already committed to in §28a.2/§47.6: the **adaptive launcher icon's monochrome themed-icon layer** (API 33+), which is the OS's own system-level theming mechanism operating on the icon outside the app's own UI, not a Paper theme concern.
+
+### 58.5 Custom Overrides
+
+Components not fully covered by Paper's default theming (Try-On Canvas, Calendar Cell, Statistic Card, custom icon set) consume the same `tokens`/`colors` exports directly via `StyleSheet.create` rather than through Paper's `theme` prop, keeping one token source of truth regardless of which rendering path a given component takes.
+
+### 58.6 Theme Switching Runtime Behavior
+
+Switching Dark Mode (System/Light/Dark, FR-28) triggers a `duration-medium-2`/300ms cross-fade of the entire screen (not an instant hard-cut, and not a full app remount) — implemented as a brief opacity animation on the navigation root wrapping the moment `PaperProvider`'s `theme` prop swaps, so the color transition itself doesn't visibly "pop." System-mode changes detected via `Appearance.addChangeListener` apply the same cross-fade automatically if the OS theme changes while the app is foregrounded.
+
+## 59. Figma Project Organization
+
+Establishes how the design source-of-truth file is structured so any designer/developer can navigate it without a walkthrough, and so the tokens/components specified in §44/§45 have exactly one authored origin.
+
+### 59.1 Pages
+
+| Page | Contents |
+|---|---|
+| 00 · Cover & Changelog | Version history mirroring this spec's own changelog convention, project links |
+| 01 · Foundations | Color, typography, iconography, spacing/radius/elevation ramps — the visual source for §44/§28a.3/§28a.4 |
+| 02 · Components | The full library, §45, organized into the same 11 subsection groups (45.1–45.11) as this document |
+| 03 · Icons & Illustrations | §46/§49 source vectors, one frame per asset, named identically to the exported filename |
+| 04 · Brand & App Icon | §47/§48 logo construction, adaptive icon layers, Play Store/Feature Graphic compositions |
+| 05 · Screens — Flows | One frame group per screen (§13/§54), organized into the same flow groupings as §11's Application Flow diagram |
+| 06 · Prototype | Interactive click-through wired across the Screens page, mirroring §11/§12's navigation graphs |
+| 07 · Archive | Superseded frames, kept out of the live pages rather than deleted, so history isn't lost but also never accidentally shipped |
+
+### 59.2 Libraries
+
+Two published libraries consumed by the Screens page: **`wardrobeai-foundations`** (colors, type styles, spacing/effect styles — the direct Figma-native equivalent of `tokens.ts`/`colors.*.ts`, §58.2) and **`wardrobeai-components`** (every component in §45 as a Figma component set). Screens never contain locally-detached instances of either — a detached instance is flagged in Design QA (§61) as a library-drift risk.
+
+### 59.3 Components, Variants & Component Properties
+
+Every component in §45 is authored as a single Figma component *set* using variant properties that mirror this document's own field structure — e.g. the Button component set has variant properties `Emphasis` (Filled/Outlined/Text/Tonal, §45.1), `State` (Enabled/Focused/Pressed/Disabled, §44.4), and a boolean `Icon` property (rather than separate icon/no-icon component sets), so the same variant axes used to describe the component in prose here are the exact axes a developer picks between in the Inspect panel.
+
+### 59.4 Variables
+
+Figma Variables (not just Styles) are used for every token in §44 that has a light/dark pair (colors) or is referenced by more than one component (spacing/radius/elevation) — bound directly to the component set's properties above, so switching a frame's local variable mode between "Light"/"Dark" previews both themes without duplicating frames, matching the single-source-of-truth intent of §58.1.
+
+### 59.5 Auto Layout Rules
+
+Every component and every screen frame uses Auto Layout exclusively (no manually-positioned/absolute children except the handful of deliberately-absolute overlays this spec itself calls out — Gesture Handles §57.3, snap guide lines §57.6, badge overlays on Wardrobe/Profile Cards §45.2) — Auto Layout's padding/gap fields are set directly to the named `space-*` tokens (§44.1) via Variables (§59.4), never a free-typed pixel value, so a spacing-token change in Foundations propagates to every frame using it.
+
+### 59.6 Naming Conventions
+
+`{Category}/{Name}/{Variant}` for components (e.g. `Button/Filled/Enabled`), matching the SVG naming convention's snake_case *concept* but Figma's own `/`-delimited grouping convention for the layers panel; screen frames named `{##} {ScreenName}` matching §13's numbered screen list exactly (`06 Wardrobe Grid`), so the Figma page and this document's screen list can be diffed against each other at a glance.
+
+### 59.7 Prototype Organization
+
+The Prototype page's connections are grouped into the same named flows as §11's Application Flow mermaid diagram (Profile flow, Wardrobe flow, Outfit/Try-On flow, Planner flow, Settings/Backup flow) rather than one undifferentiated web of connections — a reviewer validating a single flow (e.g. UC-02, §10) can isolate just that flow's connections in Figma's prototype sidebar.
+
+### 59.8 Developer Handoff
+
+Every shippable frame carries: (a) bound Variables rather than raw values, inspectable directly in Figma's Dev Mode; (b) a `Ready for Dev` frame-level status tag distinct from `In Review`/`Archived`, gating what Design QA (§61)/Handoff (§62) treats as authoritative; (c) redline annotations only where a value *isn't* already a bound Variable/component property (i.e., handoff notes document exceptions, not restate what Dev Mode already shows automatically).
+
+## 60. Asset Pipeline
+
+The path from an authored Figma asset (§59) to a bundled app asset (§48/§40).
+
+### 60.1 SVG Pipeline
+
+Icons (§46) and illustrations (§49) are exported from Figma as SVG, run through the SVGO pass already specified in §46.3 (Husky pre-commit hook, §39), then either consumed directly at runtime via `react-native-svg` (§40) — the path for every icon and illustration in this app, since none of them need to be a static raster — or, for the two legacy-format exceptions where a platform API mandates a raster (legacy launcher mipmap fallback, §48.1; notification icon density buckets, §48.7), converted to PNG at build time via a one-off `svg-to-png`-class script rather than hand-exported per density from Figma, so there is a single vector source of truth even for the raster exceptions.
+
+### 60.2 PNG Exports
+
+Reserved for the platform-mandated raster assets only (§60.1's two exceptions) plus the two marketing-only flat compositions that Play Console requires as raster (Play Store icon, Feature Graphic — §48.4/§48.5, which are composited images, not simple icon glyphs, so they're authored and exported as PNG directly rather than derived from an SVG source).
+
+### 60.3 WebP
+
+Not used for bundled app assets — every icon/illustration is vector (§60.1) and the only *photographic* raster content in the app (wardrobe item photos, Profile Body Photos, cutouts, try-on composites) is 100% user-generated at runtime, never a bundled asset, so there is no bundled-photo compression decision to make here; user-generated image compression is already specified in §27 (downsample to ~1600px longest edge before persisting) and is JPEG for the original capture (photographic content, where JPEG's lossy compression is appropriate) and PNG for cutouts/composites (transparency-bearing, where lossy compression would produce visible alpha-edge artifacts).
+
+### 60.4 Compression & Optimization
+
+SVGO for vectors (§46.3/§60.1); runtime-captured JPEG quality fixed at 85% (a standard sweet spot balancing wardrobe-grid thumbnail quality against the storage footprint §27 already flags as a concern) for original photos; PNG cutouts/composites use standard `zlib` max compression (lossless, so quality is not a tunable — only the compression *effort* level is) since these are the assets segmentation-model artifacts and any lossy step here would degrade what a subsequent try-on composite is built from.
+
+### 60.5 Naming
+
+Bundled static assets follow the conventions already fixed per-category (`ic_*`/`il_*`, §46.3/§49.5; `ic_launcher_*`, §48.1); user-generated files follow the existing internal-storage path convention (§20: `files/profiles/<profileId>/wardrobe/`, `.../bodyPhoto/`, `.../outfitPreviews/`) with filenames as the entity's own database-assigned UUID/row id plus its role suffix (`_original`/`_cutout`), never a user-supplied or human-readable name, so there is never a filesystem collision or path-traversal concern from item names containing special characters.
+
+### 60.6 Folder Structure
+
+```
+src/shared/assets/
+  fonts/            # §28a.4 — bundled Inter static weights
+  icons/
+    base/           # §46.3 — re-exported Material Symbols needing non-standard fill/weight
+    custom/         # §46.3 — the wardrobe-specific custom set
+  illustrations/    # §49 — il_*.svg
+docs/architecture/brand-assets/   # §48.2/§48.4/§48.5 — source-of-truth exports, not bundled into the app binary
+android/app/src/main/res/
+  mipmap-anydpi-v26/   # §48.1 adaptive icon XML
+  drawable/            # §48.1/§48.6/§48.7 foreground/background/monochrome/splash/notification drawables
+  xml/                 # §48.8 shortcuts.xml
+```
+
+### 60.7 Versioning
+
+Bundled static assets (icons, illustrations, fonts) are versioned implicitly via normal git history on `src/shared/assets/` — no separate asset-version manifest, since these ship inside the app binary and are already covered by the app's own Semantic Versioning (§42). The one asset class needing an *explicit* version field is the backup archive's `manifest.json` (`schema_version`, already specified in §25), which is unrelated to static design assets and is not duplicated here.
+
+## 61. Design QA Checklist
+
+A visual QA pass, run against a build on a physical device (per §38 Definition of Done's "manually verified on a physical device" requirement) before a feature is considered complete, and again in full before Release (§43).
+
+| Area | Check |
+|---|---|
+| Alignment | Every screen's content respects `grid-margin` (§44.1/§53.8); no element bleeds past its margin except full-bleed images/Camera Overlay by design (§54.7/§54.17) |
+| Spacing | All gaps between elements trace to a named `space-*` token (§44.1) — no ad-hoc pixel values in a PR diff |
+| Contrast | Every text/icon-on-background pairing actually on screen meets the WCAG AA bar already committed to in §28a.3/NFR-7, re-checked per screen (not just per token-table, since a screen can combine tokens in an untested way) |
+| Typography | Only the five roles in §28a.4's table (plus Paper's untouched defaults for anything not explicitly re-themed) appear; no inline one-off font sizes |
+| Animation | Every animated interaction matches its §50 table entry's duration/curve token; reduced-motion (§28a.7) verified by toggling the OS "Remove animations" setting and re-testing the flow |
+| Icon consistency | Every icon on screen is either a themed Material Symbol (§46.1) or a registered custom SVG (§46.3) — no stray unthemed icon-font glyph |
+| Component consistency | Every instance traces to the `wardrobeai-components` library (§59.2) with no detached/locally-modified instance shipped |
+| Responsiveness | Every breakpoint in §53 (phone portrait/landscape, tablet, folded/unfolded) manually exercised per screen, not just the default phone-portrait case |
+| Accessibility | TalkBack pass per screen (§28), 48dp touch targets verified (not just visually estimated — measured, since the visual/target-size split in §44.9 makes this easy to get wrong), reduced-motion pass (above) |
+| Touch targets | Every interactive element measures ≥48dp regardless of its visual size token (§44.9's hit-slop pattern) |
+| Dark mode | Full screen-by-screen pass in Dark, not just spot-checked — including the semantic status colors (§28a.3) and the adaptive icon's Material You themed layer (§47.6) |
+| Light mode | Same, in Light |
+| Foldables | Folded and unfolded states both exercised (§53.4), including a mid-unfold re-measure, on an emulator `FoldingFeature` profile at minimum if physical hardware isn't available |
+| Tablets | §53.3's breakpoint and dialog max-width cap verified on an `sw600dp`+ emulator/device |
+| Performance | Any new animated screen re-checked against §27's frame-budget expectations (60fps on gesture-driven surfaces, no jank on list scroll) — a QA-level spot-check, not a substitute for the Performance test layer in §29 |
+
+### 61.1 Accessibility Statement
+
+This checklist operationalizes NFR-7/§28's accessibility commitment at the visual-QA layer; it does not replace the automated TalkBack-label/contrast assertions already required in component-level tests (§29) — the two are complementary (automated tests catch regressions continuously, this checklist catches integration issues only visible when a whole screen is assembled).
+
+## 62. Design Handoff Checklist
+
+What must be true before a screen/feature moves from Design into implementation, closing the loop §59.8's per-frame `Ready for Dev` tag opens.
+
+- Frame tagged `Ready for Dev` in Figma (§59.8), with no outstanding `In Review` comments.
+- Every value on the frame traces to a bound Variable (§59.4) or a documented exception annotation (§59.8c) — nothing left as an untagged magic number.
+- Component instances are all library instances (§59.2), zero detached/locally-modified instances.
+- All states specified in this document's relevant component entry (§45) are present as either a Figma variant or explicitly noted as "not reachable from this screen" (e.g., a Filled Button's `Disabled` variant isn't always relevant, but its absence should be a decision, not an oversight).
+- Empty/loading/error states are present for any screen this document requires them for (§54's per-screen entries, §45.8/§45.9), not just the "happy path" frame.
+- Both light and dark theme frames exist (or are provably identical via shared Variables, §59.4 — not every frame needs a hand-duplicated dark twin if the Variable binding already handles it correctly).
+- Copy is final (or explicitly marked placeholder-pending-copywriter) — no lorem ipsum on a frame tagged `Ready for Dev`.
+- Relevant FR/§ cross-references are noted on the frame (matching this document's own cross-referencing habit), so a developer implementing the frame can find the authoritative requirement text without guessing which FR it maps to.
+- Accessibility labels for icon-only controls are specified on the frame itself (not left for the developer to invent at implementation time), per §28/§45.1's TalkBack requirement.
+- Corresponding entry in this document (§54 at minimum; §44–§61 as applicable) exists and is not marked as an open question (§34) — if a design decision is still genuinely open, the frame cannot yet be `Ready for Dev`.
+
+## 63. Appendix
+
+Consolidated reference tables — no new decisions in this section, only a single-page rollup of values already established above, for quick lookup without re-reading each section in full.
+
+### 63.1 Design Token Tables
+
+See §44 in full (44.1–44.14) for spacing, radius, elevation, shadow/state-layer, stroke, opacity, icon-size, avatar-size, button/FAB/chip-height, card/grid/nav spacing, animation-duration, and z-index tokens — not re-tabulated here since §44's tables are already the appendix-grade compact format; duplicating them would risk the two copies drifting, which §58.3's single-`Tokens`-interface discipline is specifically meant to prevent at the code level.
+
+### 63.2 Spacing Tables
+
+See §44.1.
+
+### 63.3 Radius Tables
+
+See §44.2.
+
+### 63.4 Elevation Tables
+
+See §44.3.
+
+### 63.5 Animation Tables
+
+See §44.13 (durations/curves) and §50 (the full per-interaction application of those durations).
+
+### 63.6 Component Inventory
+
+| # | Component | Spec |
+|---|---|---|
+| 1 | Filled/Outlined/Text/Tonal Button | §45.1 |
+| 2 | FAB | §45.1 |
+| 3 | Icon Button | §45.1 |
+| 4 | Card (base) | §45.2 |
+| 5 | List Item | §45.2 |
+| 6 | Wardrobe Card | §45.2 |
+| 7 | Outfit Card | §45.2 |
+| 8 | Category Card | §45.2 |
+| 9 | Profile Card | §45.2 |
+| 10 | Statistic Card | §45.2 |
+| 11 | Calendar Cell | §45.2 |
+| 12 | Section Header | §45.2 |
+| 13 | Top App Bar | §45.3 |
+| 14 | Bottom App Bar | §45.3 |
+| 15 | Bottom Navigation | §45.3 |
+| 16 | Navigation Drawer | §45.3 |
+| 17 | Navigation Rail (future) | §45.3 |
+| 18 | Search Bar | §45.4 |
+| 19 | Search Field | §45.4 |
+| 20 | Text Field | §45.5 |
+| 21 | Password Field | §45.5 |
+| 22 | PIN Entry | §45.5 |
+| 23 | Dropdown | §45.5 |
+| 24 | Dialog | §45.6 |
+| 25 | Bottom Sheet | §45.6 |
+| 26 | Snackbar | §45.6 |
+| 27 | Tooltip | §45.6 |
+| 28 | Chip / Filter Chip / Assist Chip / Tag Chip | §45.7 |
+| 29 | Badge | §45.7 |
+| 30 | Progress Indicator | §45.8 |
+| 31 | Skeleton Loader | §45.8 |
+| 32 | Loading Overlay | §45.8 |
+| 33 | Empty State | §45.9 |
+| 34 | Confirmation Dialog | §45.9 |
+| 35 | Error Dialog | §45.9 |
+| 36 | Success Dialog | §45.9 |
+| 37 | Backup Progress Dialog | §45.9 |
+| 38 | Image Picker | §45.10 |
+| 39 | Camera Overlay | §45.10 |
+| 40 | Crop Overlay | §45.10 |
+| 41 | Try-On Layer | §45.11 |
+| 42 | Gesture Handle | §45.11 |
+
+### 63.7 Asset Inventory
+
+See §48.9's consolidated sizes/formats/naming table for every exported binary asset class, and §60.6 for their folder locations.
+
+### 63.8 Icon Inventory
+
+Base set: every Material Symbol referenced across §14/§28a.5 (`search`, `filter`, `edit`, `delete`, `settings`, `event_available`, `favorite`, `lock`, `pin`, `add_a_photo`, and standard navigation chevrons/back-arrows), configured per §46.1. Custom set: the four entries in §28a.5's table (background-removal/cutout, Virtual Try-On outline+filled pair, backup/restore), exported per §46.3.
+
+### 63.9 Illustration Inventory
+
+See §49.5's full table (ten illustrations, six of which are the body-shape/stance Profile Body Photo guide variants).
+
+### 63.10 Export Checklist
+
+- [ ] Every icon/illustration re-exported through SVGO (§46.3/§60.1) before merge.
+- [ ] Every new component added to the Figma `wardrobeai-components` library (§59.2) in the same PR/commit that adds it to `src/shared/components/`.
+- [ ] Every new custom icon registered in the typed icon-name map (§46.3) in the same commit it's added to `src/shared/assets/icons/`.
+- [ ] App icon package (§48) regenerated via the standard Android icon tooling whenever the logomark (§47) changes, never hand-edited per density.
+- [ ] Play Store icon / Feature Graphic (§48.4/§48.5) refreshed prior to any Release Checklist (§43) pass if brand assets changed since the last submission.
+
+---
+
+*This document is a DRAFT pending your review. Items in §32 (Risks) and §34 (Open Questions) are the only pieces intentionally left unresolved — everything else reflects the decisions made during Discovery, the v1.1 architecture/QA review pass, the v1.3.1 senior UX review pass, and the v1.4.0 implementation-level UX/UI pass (§44–§63). Flag anything you want changed before we freeze it and move to Phase 4 (Architecture).*

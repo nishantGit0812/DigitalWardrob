@@ -1,6 +1,8 @@
 # Mission
 
-Source of truth for *why* this product exists and *what* it must (and must not) do. Derived from stakeholder input in [`docs/spec.md`](../docs/spec.md) (spec v1.3.1-draft). If this file and the spec ever disagree, treat that as a signal to reconcile them, not to silently pick one.
+Source of truth for *why* this product exists and *what* it must (and must not) do. Derived from stakeholder input in [`docs/spec.md`](../docs/spec.md) (spec v1.4.0-draft). If this file and the spec ever disagree, treat that as a signal to reconcile them, not to silently pick one.
+
+**Since v1.4.0:** the spec's §44–§63 turned goal #6 below ("Ship a Material Design 3, dark-mode-capable, accessible UI") from a stated intent into a complete, implementation-grade design system — design tokens, a ~40-component shared library, icon/logo/illustration systems, and per-interaction motion/haptic/sound specs. That doesn't change any goal or non-negotiable principle here; it means the UI ambition this document has always stated is no longer something later phases have to interpret or improvise — it's now something they build against directly (see `tech-stack.md` and `roadmap.md`).
 
 ## Product Vision
 
