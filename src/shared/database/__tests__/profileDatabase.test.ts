@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { Migration } from '../migrationRunner';
 import { getUserVersion } from '../migrationRunner';
 import {
+  deleteProfileDatabase,
   getProfileDatabaseName,
   openProfileDatabase,
 } from '../profileDatabase';
@@ -132,5 +133,37 @@ describe('openProfileDatabase', () => {
     const db = openProfileDatabase(profileId, workingMigration, tempDir);
     expect(getUserVersion(db)).toBe(1);
     db.close();
+  });
+});
+
+describe('deleteProfileDatabase', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wardrobeai-db-test-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('removes an existing DB file', () => {
+    const profileId = 'profile-to-delete';
+    const dbFilePath = path.join(tempDir, getProfileDatabaseName(profileId));
+    openProfileDatabase(profileId, noOpMigration, tempDir).close();
+    expect(fs.existsSync(dbFilePath)).toBe(true);
+
+    deleteProfileDatabase(profileId, tempDir);
+
+    expect(fs.existsSync(dbFilePath)).toBe(false);
+  });
+
+  it('deleting a DB that was never created leaves no file behind', () => {
+    const profileId = 'profile-never-created';
+    const dbFilePath = path.join(tempDir, getProfileDatabaseName(profileId));
+
+    deleteProfileDatabase(profileId, tempDir);
+
+    expect(fs.existsSync(dbFilePath)).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 export type { ProfileRegistryEntry, ThemeMode } from './appMetaStore';
 export {
+  clearActiveProfileId,
   getActiveProfileId,
   getOnboardingComplete,
   getProfileRegistry,

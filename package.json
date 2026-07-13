@@ -11,6 +11,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@dr.pogodin/react-native-fs": "^2.39.2",
     "@op-engineering/op-sqlite": "^17.1.2",
     "@react-native/new-app-screen": "0.86.0",
     "@react-navigation/bottom-tabs": "^7.18.8",
@@ -21,8 +22,10 @@
     "react-native-mmkv": "^4.3.2",
     "react-native-nitro-modules": "^0.36.1",
     "react-native-paper": "^5.15.3",
+    "react-native-reanimated": "^4.5.1",
     "react-native-safe-area-context": "^5.5.2",
-    "react-native-screens": "^4.26.0"
+    "react-native-screens": "^4.26.0",
+    "react-native-worklets": "^0.10.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -35,6 +38,7 @@
     "@react-native/jest-preset": "^0.86.0",
     "@react-native/metro-config": "0.86.0",
     "@react-native/typescript-config": "0.86.0",
+    "@testing-library/react-native": "^14.0.1",
     "@types/jest": "^29.5.13",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.0",
@@ -50,5 +54,13 @@
   },
   "engines": {
     "node": ">= 22.11.0"
+  },
+  "codegenConfig": {
+    "name": "WardrobeAISpecs",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.wardrobeai.nativemodules"
+    }
   }
 }
