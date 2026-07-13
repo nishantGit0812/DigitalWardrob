@@ -16,6 +16,14 @@ Navigation root, providers, and theming for the app shell, per `docs/spec.md`
   `disabledState.ts` is the shared MD3 disabled-content/container token
   (Task Group 6), for custom controls that don't go through Paper's own
   `disabled` prop handling.
+  `tokens.ts` (Phase 2, Task Group 1) is the full design token set from
+  spec.md §44 — spacing, radius, elevation, stroke width, opacity,
+  icon/avatar/component sizing, animation duration, and z-index/stacking
+  policy — as a single typed `tokens` object. A raw pixel/dp literal in a
+  `StyleSheet.create()` call outside this file is a spec violation; see
+  `.eslintrc.js`'s `no-restricted-syntax` override for the (best-effort,
+  not exhaustive) automated check, which excludes the Phase 0/1 files that
+  predate this module.
 - `store/` — not created yet. Redux Toolkit + Redux Persist (tech-stack.md,
   requirements.md's carried-over decisions) has no task group in Phase 0's
   `plan.md` — there's no global state to manage until Phase 1 (Profiles &
