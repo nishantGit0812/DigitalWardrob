@@ -92,15 +92,17 @@ export function ProfileSelectionScreen({
         Who&rsquo;s using WardrobeAI?
       </Text>
       <View style={styles.grid}>
-        {profiles.map(profile => (
+        {profiles.map((profile, index) => (
           <ProfileTile
             key={profile.id}
             profile={profile}
+            index={index}
             onPress={() => handleSelect(profile)}
             onEdit={() => onEditProfile(profile)}
           />
         ))}
         <AddProfileTile
+          index={profiles.length}
           onPress={onAddProfile}
           disabled={profiles.length >= MAX_PROFILES}
         />

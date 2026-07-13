@@ -1,12 +1,15 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
+import Animated from 'react-native-reanimated';
 import { pickReadableTextColor } from '../../../app/theme';
 import type { Profile } from '../domain/Profile';
+import { useGridTileMotion } from './gridMotion';
 
 const TILE_SIZE = 72;
 
 interface ProfileTileProps {
   profile: Profile;
+  index: number;
   onPress: () => void;
   onEdit: () => void;
 }
@@ -16,13 +19,26 @@ interface ProfileTileProps {
 // Phase 1. The tile itself opens the profile; a separate "Edit" affordance
 // (Task Group 4.1) reaches Edit Profile without that ambiguity of what a
 // tap vs. long-press does — long-press has no reliable TalkBack exposure,
-// so it's a distinct, clearly-labeled control instead.
-export function ProfileTile({ profile, onPress, onEdit }: ProfileTileProps) {
+// so it's a distinct, clearly-labeled control instead. `index` drives the
+// grid's staggered entry animation (gridMotion.ts) — it's the tile's
+// position, not a stable identity, so reordering re-staggers on next mount
+// but that's the entry transition's job, not the layout/reorder one.
+export function ProfileTile({
+  profile,
+  index,
+  onPress,
+  onEdit,
+}: ProfileTileProps) {
   const initial = profile.name.trim().charAt(0).toUpperCase();
   const initialColor = pickReadableTextColor(profile.avatarColor);
+  const motion = useGridTileMotion(index);
 
   return (
-    <View style={styles.container}>
+    <Animated.View
+      style={styles.container}
+      entering={motion.entering}
+      layout={motion.layout}
+    >
       <Pressable
         onPress={onPress}
         style={styles.tilePressable}
@@ -46,7 +62,7 @@ export function ProfileTile({ profile, onPress, onEdit }: ProfileTileProps) {
       >
         <Text variant="labelMedium">Edit</Text>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }
 
