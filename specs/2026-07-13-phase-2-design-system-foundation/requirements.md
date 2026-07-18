@@ -8,8 +8,8 @@ In scope (roadmap 2.1–2.16, kept together as one phase per the roadmap's own p
 
 1. Design tokens module (`src/app/theme/tokens.ts`): spacing, radius, elevation, stroke-width, opacity scales (spec §44.1–§44.6).
 2. Remaining size tokens: icon/avatar/button/FAB/chip heights, card/grid/nav spacing, animation-duration scale, z-index/stacking policy (spec §44.7–§44.14).
-3. Theme file refactor: split Phase 1's `paperTheme.ts` / `disabledState.ts` / `textContrast.ts` into `colors.light.ts` / `colors.dark.ts` / `statusColors.ts` / `typography.ts` / `light.ts` / `dark.ts` per spec §58.2 — restructuring only, no visual diff.
-4. `react-native-svg` + React Native Vector Icons dependencies; Material Symbols Rounded base set configuration (spec §46.1); SVGO pre-commit hook added to Husky (spec §60.1).
+3. Theme file refactor: split Phase 1's `paperTheme.ts` into `colors.light.ts` / `colors.dark.ts` / `statusColors.ts` / `typography.ts` / `light.ts` / `dark.ts` per spec §58.2 — restructuring only, no visual diff. `disabledState.ts` and `textContrast.ts` carry forward unchanged (both already take a generic theme/hex input, so the refactor around them doesn't touch either).
+4. `@material-symbols/svg-400`/`@material-symbols/svg-500` (pre-built Material Symbols Rounded SVGs) + `react-native-svg` dependencies — **not** React Native Vector Icons: no npm package ships Material Symbols as an RNVI font family (RNVI only publishes the older Material Icons/Material Design Icons fonts), corrected while building Task Group 3, see tech-stack.md's Icons row; Material Symbols Rounded base set configuration (spec §46.1); SVGO pre-commit hook added to Husky (spec §60.1).
 5. Custom icon subset: cutout icon, Try-On tab outline/filled pair, backup/restore icon (spec §46.2/§46.3), each registered in the typed icon-name map in the same commit it's added.
 6. Shared components batch 1 — Button (Filled/Outlined/Text/Tonal), Icon Button, FAB (spec §45.1).
 7. Shared components batch 2 — Card (base), List Item, Section Header (spec §45.2). Feature-specific card variants are built later, on top of this base.
