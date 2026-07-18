@@ -26,7 +26,7 @@ Phase 0 and Phase 1 (both already shipped — see [`roadmap.md`](roadmap.md)) pr
 | Lists | FlashList (virtualized, for wardrobe grid / outfit pickers) |
 | Gestures/animation | React Native Reanimated, React Native Gesture Handler |
 | Layout primitives | React Native Safe Area Context, React Native Screens |
-| Icons | React Native Vector Icons (Material Symbols base set) + React Native SVG (custom wardrobe-specific icon subset, spec §28a.5) — every icon used as a tab/chip selection indicator ships an outlined *and* filled variant, no exceptions (a Phase 0 draft of this section's predecessor originally missed this for one custom icon; see spec §28a.5) |
+| Icons | `@material-symbols/svg-400`/`@material-symbols/svg-500` (pre-built Material Symbols Rounded SVGs, weight 400/500 — **corrected in Phase 2 Task Group 3**: no npm package ships Material Symbols as a react-native-vector-icons font family, verified against the live registry when this task group was built; React Native Vector Icons only publishes the older Material Icons/Material Design Icons fonts) + React Native SVG (renders both the base-set and custom wardrobe-specific icon subset, spec §28a.5) — every icon used as a tab/chip selection indicator ships an outlined *and* filled variant, no exceptions (a Phase 0 draft of this section's predecessor originally missed this for one custom icon; see spec §28a.5) |
 | Typography | Bundled Inter variable font static assets (spec §28a.4) — no remote/Google Fonts fetch, kept offline-safe |
 | Local database access | op-sqlite (DAO layer, versioned migrations on app start) |
 | Key-value storage | MMKV (active profile id, theme mode, onboarding flag — chosen over AsyncStorage for synchronous hot-path reads) |

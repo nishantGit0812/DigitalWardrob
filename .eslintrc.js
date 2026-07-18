@@ -63,5 +63,59 @@ module.exports = {
         ],
       },
     },
+    {
+      // Design tokens (spec.md §44) are named constants in
+      // `src/app/theme/tokens.ts`; a raw pixel/dp literal in a
+      // `StyleSheet.create()` call anywhere else is a spec violation, not a
+      // style preference (plan.md Task Group 1.3). This selector-based check
+      // is a best-effort, not exhaustive, guard: it catches the clearest,
+      // most common token-backed properties (padding/margin/gap, radius,
+      // width, elevation, zIndex, fontSize/lineHeight), including their
+      // negative forms (e.g. `marginTop: -16`). It deliberately does NOT
+      // flag `width`/`height`/`top`/`bottom`/`left`/`right`/`flex`/`opacity`
+      // — those are legitimately arbitrary as often as they're token-backed
+      // (image aspect ratios, flex ratios, one-off absolute positioning),
+      // and a blanket rule there would be noise, not signal. Reviewers
+      // should still hold PRs to tokens.ts for those properties per
+      // requirements.md and tokens.ts's own header comment; this rule is a
+      // net, not a guarantee.
+      files: ['src/**/*.{ts,tsx}'],
+      excludedFiles: [
+        'src/app/theme/tokens.ts',
+        // Phase 0/1 predate tokens.ts and are explicitly not retroactively
+        // rewired to it (requirements.md's carried-over non-retroactive
+        // policy, mirroring the Design QA/Handoff Checklists' own "Phase 0/1
+        // predate this and are not retroactively audited" stance). New code
+        // from Phase 2 onward is bound by this rule with no exclusion.
+        'src/app/navigation/screens/SettingsScreen.tsx',
+        'src/features/profiles/presentation/AddProfileTile.tsx',
+        'src/features/profiles/presentation/AvatarColorPicker.tsx',
+        'src/features/profiles/presentation/BiometricGateScreen.tsx',
+        'src/features/profiles/presentation/CreateProfileScreen.tsx',
+        'src/features/profiles/presentation/EditProfileScreen.tsx',
+        'src/features/profiles/presentation/PinEntryScreen.tsx',
+        'src/features/profiles/presentation/PinInput.tsx',
+        'src/features/profiles/presentation/PinSetupScreen.tsx',
+        'src/features/profiles/presentation/ProfileSelectionScreen.tsx',
+        'src/features/profiles/presentation/ProfileTile.tsx',
+      ],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector:
+              "CallExpression[callee.object.name='StyleSheet'][callee.property.name='create'] Property[key.name=/^(padding\\w*|margin\\w*|gap|rowGap|columnGap|borderRadius|border\\w*Radius|borderWidth|border\\w*Width|elevation|zIndex|fontSize|lineHeight)$/] > Literal[raw=/^\\d+(\\.\\d+)?$/]",
+            message:
+              'Use a named token from src/app/theme/tokens.ts instead of a raw dp/px literal in StyleSheet.create() (spec.md §44).',
+          },
+          {
+            selector:
+              "CallExpression[callee.object.name='StyleSheet'][callee.property.name='create'] Property[key.name=/^(padding\\w*|margin\\w*|gap|rowGap|columnGap|borderRadius|border\\w*Radius|borderWidth|border\\w*Width|elevation|zIndex|fontSize|lineHeight)$/] > UnaryExpression[operator='-'] > Literal[raw=/^\\d+(\\.\\d+)?$/]",
+            message:
+              'Use a named token from src/app/theme/tokens.ts instead of a raw dp/px literal in StyleSheet.create() (spec.md §44).',
+          },
+        ],
+      },
+    },
   ],
 };
