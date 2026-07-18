@@ -36,6 +36,25 @@ Populated as later task groups need it:
 - `types/svg.d.ts` — ambient `declare module '*.svg'` so a `.svg` import
   (turned into a component by `metro.config.js`'s
   `react-native-svg-transformer`) typechecks as `FC<SvgProps>`.
+- `components/buttons/` (Phase 2, Task Group 4, spec.md §45.1) — `Button`
+  (one component spanning Filled/Outlined/Text/Tonal via an `emphasis`
+  prop, since Paper models the visual difference as a single `mode` and
+  its default MD3 geometry already matches this app's tokens), `IconButton`
+  (bridges this app's SVG icon set — a single component, or an
+  `{ Outline, Filled }` pair for the *toggle* sub-variant — into Paper's
+  `IconSource` render-prop shape; `accessibilityLabel` is mandatory, not
+  optional, per spec.md §28/§24), and `Fab` (Paper's `size="medium"` default
+  already reproduces `height-fab-default`/56dp and `radius-lg`/16dp; adds
+  the spec's press scale-and-spring feedback, reduced-motion-gated, since
+  Paper's `FAB` exposes no onPressIn/onPressOut to hook it onto directly).
+- `components/cards/` (Phase 2, Task Group 4, spec.md §45.2) — `Card`
+  (base-only; feature-specific variants like Wardrobe/Outfit Card are
+  out of scope for this phase, built later on top of this), `ListItem`
+  (overrides Paper's default `List.Item` padding to this app's
+  `list-item-padding-h`/`-v` tokens and picks the one-line/two-line
+  `list-item-min-height` off whether `description` is supplied), and
+  `SectionHeader` (fully custom — Label Large, On-Surface-Variant, no
+  Paper default to wrap).
 
 Testing per `tech-stack.md`: Jest for `database/`/`utils/` unit and
 integration tests; shared `components/`/`hooks/` must use React Native
