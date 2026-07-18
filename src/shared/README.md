@@ -55,6 +55,31 @@ Populated as later task groups need it:
   `list-item-min-height` off whether `description` is supplied), and
   `SectionHeader` (fully custom — Label Large, On-Surface-Variant, no
   Paper default to wrap).
+- `components/overlays/` (Phase 2, Task Group 5, spec.md §45.6) — `Dialog`
+  (always renders through a `Portal`; collapses Paper's built-in fade to
+  instant under reduced motion via a `theme.animation.scale` override),
+  `Snackbar` (overrides Paper's default radius/elevation to
+  `radius-sm`/`elevation-3`; 4s/8s auto-dismiss duration is spec-driven,
+  not Paper's own SHORT/MEDIUM/LONG constants), `Tooltip` (a pure
+  pass-through — Paper's own 500ms long-press default already matches
+  spec.md §45.6), and `BottomSheet` — fully custom, since no Paper
+  component exists for it despite the spec's "(Paper default, themed)"
+  label (confirmed against react-native-paper's own component list).
+  Built on `react-native-gesture-handler`'s `Gesture.Pan` (first consumer
+  of that dependency in this app — added this task group, requiring
+  `GestureHandlerRootView` at the app root, see `App.tsx`) for 1:1
+  drag-to-dismiss; `shouldDismissBottomSheet` (the velocity/height-fraction
+  threshold decision) is exported as a pure function so it's unit-testable
+  without simulating a native gesture.
+- `components/chips/` (Phase 2, Task Group 5, spec.md §45.7) — `Chip`
+  (base: overrides Paper's default height/radius to `height-chip`/
+  `radius-full`), `FilterChip` (toggle via `selected`, with
+  `showSelectedCheck` turned off — this app has no MaterialCommunityIcons
+  font for Paper's default checkmark), `AssistChip` and `TagChip` (leading
+  icon / close icon bridged from this app's own SVG components into
+  Paper's `IconSource` render-prop shape, same pattern as `IconButton`/
+  `Fab`), and `Badge` (a pure pass-through — Paper's own `size/2` radius
+  calc already gives a pill/circle for any size).
 
 Testing per `tech-stack.md`: Jest for `database/`/`utils/` unit and
 integration tests; shared `components/`/`hooks/` must use React Native

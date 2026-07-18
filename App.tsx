@@ -3,7 +3,8 @@
  */
 
 import { NavigationContainer } from '@react-navigation/native';
-import { StatusBar } from 'react-native';
+import { StatusBar, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/app/navigation/RootNavigator';
@@ -36,18 +37,29 @@ function ThemedApp() {
 
 function App() {
   return (
-    <SafeAreaProvider>
-      <BiometricGateProvider gateway={biometricGateway}>
-        <ProfilePinProvider gateway={profilePinGateway}>
-          <ProfileRepositoryProvider repository={profileRepository}>
-            <ThemeModeProvider>
-              <ThemedApp />
-            </ThemeModeProvider>
-          </ProfileRepositoryProvider>
-        </ProfilePinProvider>
-      </BiometricGateProvider>
-    </SafeAreaProvider>
+    // Required root wrapper for react-native-gesture-handler (Task Group 5's
+    // BottomSheet is its first consumer, spec.md §45.6) — must sit above
+    // every other provider per the library's own setup docs.
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <BiometricGateProvider gateway={biometricGateway}>
+          <ProfilePinProvider gateway={profilePinGateway}>
+            <ProfileRepositoryProvider repository={profileRepository}>
+              <ThemeModeProvider>
+                <ThemedApp />
+              </ThemeModeProvider>
+            </ProfileRepositoryProvider>
+          </ProfilePinProvider>
+        </BiometricGateProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});
 
 export default App;
