@@ -24,10 +24,11 @@ module.exports = {
     // to a plain mock component instead.
     '\\.svg$': '<rootDir>/__mocks__/svgMock.js',
   },
-  // react-native-reanimated/react-native-worklets ship ESM-only source
-  // (no commonjs build) and must go through Babel like the app's own code.
+  // react-native-reanimated/react-native-worklets/react-native-gesture-handler
+  // ship ESM-only source (no commonjs build) and must go through Babel like
+  // the app's own code.
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@op-engineering/op-sqlite|@react-navigation|react-native-screens|react-native-reanimated|react-native-worklets)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@op-engineering/op-sqlite|@react-navigation|react-native-screens|react-native-reanimated|react-native-worklets|react-native-gesture-handler)/)',
   ],
   setupFiles: ['<rootDir>/jest.setup.js'],
 };

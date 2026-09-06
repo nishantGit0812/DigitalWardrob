@@ -7,3 +7,8 @@ jest.mock('react-native-reanimated', () => {
   Reanimated.default.call = () => {};
   return Reanimated;
 });
+
+// Standard react-native-gesture-handler Jest setup (its own docs' "Testing"
+// section) — swaps in its JS-only mocks so Gesture.Pan()-driven components
+// (BottomSheet) don't need the native gesture runtime under test.
+require('react-native-gesture-handler/jestSetup');
